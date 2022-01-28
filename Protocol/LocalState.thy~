@@ -1,0 +1,17 @@
+theory LocalState
+  imports Main Variables Block Tree
+begin
+
+(* LocalState
+ This file defines the LocalState 
+a party should maintain.*)
+record LocalState =
+      tT :: treeType
+      pk :: Party
+      tree :: tT
+
+
+Instance LocalStateSettable : Settable LocalState :=
+  settable! mkLocalState <tT ; pk; tree>. 
+
+end
