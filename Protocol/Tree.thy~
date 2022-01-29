@@ -33,10 +33,12 @@ fun properly_linked :: "Chain \<Rightarrow> bool" where
 fun descending :: "Chain \<Rightarrow> bool" where
 "descending [] = True"|
 "descending [b] = True"|
-"descending (c#cs) = (if sl c \<le> sl (hd cs) then descending cs  else False)"
+"descending (c#cs) = (if sl c > sl (hd cs) then descending cs  else False)"
 
 definition valid_chain  :: "Chain \<Rightarrow> bool" where
 "valid_chain c =(if properly_linked c \<and> correct_blocks c \<and> descending c then True else False)"
-value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 0, bid = 1 \<rparr>,\<lparr> sl = 1, txs = 1, pred =0, bid = 1 \<rparr>]"
-(*fix linked and descending to be strictly*)
+value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
+(*Chain goes  [bn,...,b3,b2,bgenesis]*)
+value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
+
 end
