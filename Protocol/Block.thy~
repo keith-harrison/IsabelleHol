@@ -29,7 +29,7 @@ lemma eq_blockP : " \<forall> b1. \<exists> b2. (eq_block b1 b2 = True) \<and> (
 datatype GenesisBlock = Block
 
 definition HashB :: "Block \<Rightarrow> nat" where
-"HashB bl = pred bl -1"
+"HashB bl = pred bl +1"
 
 (* Canonial structures for block *)
 (*Math comp wut

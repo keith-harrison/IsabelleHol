@@ -1,5 +1,5 @@
 theory Tree
-imports Main Block Variables
+imports Main Block Variables "HOL-Library.Tree"
 begin
 (* Block Tree.
    This file contains the definition of a treeType, which is the type of a blocktree. 
@@ -40,27 +40,33 @@ definition valid_chain  :: "Chain \<Rightarrow> bool" where
 value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
 (*Chain goes  [bn,...,b3,b2,bgenesis]*)
 value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
-datatype T = Leaf | Node Block "T list"
 
-fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
-"extendTree T B = insert B T "
-
+datatype T = Leaf Block | Node Block "T list"
+type_synonym extendTree = "T \<Rightarrow> Block \<Rightarrow> T"
 type_synonym bestChain = "Slot \<Rightarrow> T \<Rightarrow> Chain"
+type_synonym allBlocks = "T \<Rightarrow> BlockPool"
+datatype tree0 = Node Block
+(*
+allBlocks tree0 =i [:: GenesisBlock] Instantiated*)
 
-type_synonym allBlocks = "T \<Rightarrow> BlockPool" (*post order*)
+definition allBlocks :: "T \<Rightarrow> BlockPool" where
+"allBlocks (Node Block) = [Block]"
 
-type_synonym tree0 = T
-function allBlocks tree0 = i [:: GenesisBlock]
-function \<forall>t. \<forall>b allBlocks (extendTree t b) =i allBlocks t ++ [:: b]
-function \<forall>t s. valid_chain(bestChain s t)
-datatype treeType = type
+(*forall t b, allBlocks (extendTree t b) =i allBlocks t ++ [:: b]*)
+
+(*forall s t, {subset (bestChain*)
+
+(*forall t s, valid_chain (bestChain s t)*)
+
+
+(*forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |bestChain s t|*)
+
+(*forall s t, {subset (bestChain s t) <= [seq b <- allBlocks t | sl b <= s]}*)
+
+
+
 
 (*
-   \<forall> c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |bestChain s t|
-  \<forall> s t, {subset (bestChain s t) <= [seq b <- allBlocks t | sl b <= s]}
-
-
-
  Notation class_of := mixin_of.
   Record type := Pack { sort : Type; class : class_of sort }.
     Coercion sort : type >-> Sortclass.
