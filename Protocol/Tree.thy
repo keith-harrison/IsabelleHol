@@ -41,12 +41,19 @@ value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<l
 (*Chain goes  [bn,...,b3,b2,bgenesis]*)
 value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
 
-datatype T = Leaf Block | Node Block "T list"
+datatype T = Leaf | Node Block "T list"
+
 type_synonym extendTree = "T \<Rightarrow> Block \<Rightarrow> T"
 type_synonym bestChain = "Slot \<Rightarrow> T \<Rightarrow> Chain"
-type_synonym allBlocks = "T \<Rightarrow> BlockPool"
-datatype tree0 = Node Block
-(*
+
+definition "x = Node \<lparr>sl = 0, txs=0, pred=0, bid = 0 \<rparr> []"
+(*concrete instance definition\<rightarrow>fun\<rightarrow>function power but also in inverse responsibility \<rightarrow> e.g. pattern matching/proving termination*)
+
+definition allBlocks x = 
+
+
+(* basically saying if we flatten tree0 that it is a list of block 
+so only contains a genesisblock
 allBlocks tree0 =i [:: GenesisBlock] Instantiated*)
 
 definition allBlocks :: "T \<Rightarrow> BlockPool" where
