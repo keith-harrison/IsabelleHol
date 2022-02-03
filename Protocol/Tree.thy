@@ -41,50 +41,38 @@ value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<l
 (*Chain goes  [bn,...,b3,b2,bgenesis]*)
 value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
 
-datatype T = Leaf | Node Block "T list"
-
-type_synonym extendTree = "T \<Rightarrow> Block \<Rightarrow> T"
-type_synonym bestChain = "Slot \<Rightarrow> T \<Rightarrow> Chain"
-
-definition "x = Node \<lparr>sl = 0, txs=0, pred=0, bid = 0 \<rparr> []"
+datatype T = Leaf | Node Block T T
+definition "tree0 = Node \<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr> Leaf Leaf"
 (*concrete instance definition\<rightarrow>fun\<rightarrow>function power but also in inverse responsibility \<rightarrow> e.g. pattern matching/proving termination*)
 
-definition allBlocks x = 
+
+(*fun allBlocks :: "T \<Rightarrow> BlockPool" where
+"allBlocks (Node m l r) =(if ((length r = 0) \<and> (isGen m = True))  then  [m]  else [])"|
+"allBlocks Leaf = []"
+*)
+function allBlocks2 :: "T \<Rightarrow> BlockPool" where
+"allBlocks2 (Node m l r) = allBlocks2 l@allBlocks2 r@ [m]"|
+"allBlocks2 Leaf = []"
+
+(* postorder search similar to allblocks 2 but given Node m l r and slot value how to check subtree l or r using \<lparr> \<rparr> and accessing sl*)
+fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
+"bestChain slotvalue (Node m l r) = []"|
+"bestChain slotvalue Leaf  = []"
+(* similar to best chain but need to check sl value of block to put in correctly *)
+fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
+"extendTree (Node m l r) Bl = Leaf"|
+"extendTree Leaf Bl  = Leaf"
 
 
-(* basically saying if we flatten tree0 that it is a list of block 
-so only contains a genesisblock
-allBlocks tree0 =i [:: GenesisBlock] Instantiated*)
 
-definition allBlocks :: "T \<Rightarrow> BlockPool" where
-"allBlocks (Node Block) = [Block]"
-
+(* all_tree0 T : @allBlocks T tree0  =i [:: GenesisBlock].*)
 (*forall t b, allBlocks (extendTree t b) =i allBlocks t ++ [:: b]*)
-
 (*forall s t, {subset (bestChain*)
-
 (*forall t s, valid_chain (bestChain s t)*)
-
-
 (*forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |bestChain s t|*)
-
 (*forall s t, {subset (bestChain s t) <= [seq b <- allBlocks t | sl b <= s]}*)
 
 
 
 
-(*
- Notation class_of := mixin_of.
-  Record type := Pack { sort : Type; class : class_of sort }.
-    Coercion sort : type >-> Sortclass.
-    Notation BlockTreeMixin := Mixin.
-    Notation TreeType T m := (@Pack T m).
-      Implicit Type (T : treeType).
-
-      Definition extendTree {T} := extendTree (class T).
-      Definition bestChain {T} := bestChain (class T).
-      Definition allBlocks {T} := allBlocks (class T).
-      Definition tree0 {T} := tree0 (class T).
-Proofs
-*)
 end
