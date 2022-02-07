@@ -26,18 +26,14 @@ lemma eq_blockP : " \<forall> b1. \<exists> b2. (eq_block b1 b2 = True) \<and> (
 
 
 (* Parameters for Block *)
-datatype GenesisBlock = Block
 definition isGen :: "Block \<Rightarrow> bool" where
 "isGen b =(if (pred b = 0) then True else False) "
 
 value "isGen \<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>"
+
 definition HashB :: "Block \<Rightarrow> nat" where
 "HashB bl = pred bl +1"
 
-(* Canonial structures for block *)
-(*Math comp wut
-canonical Block_eqMixin = Eval hnf in EqMixin eq_blockP.
-canonical Block_eqType = Eval hnf in EqType Block Block_eqMixin. *)
 
 
 
