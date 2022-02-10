@@ -31,8 +31,8 @@ definition isGen :: "Block \<Rightarrow> bool" where
 
 value "isGen \<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>"
 
-definition HashB :: "Block \<Rightarrow> int" where
-"HashB bl = pred bl +1"
+definition HashB :: "Block \<Rightarrow> nat" where
+"HashB bl = pred bl+1"
 
 
 

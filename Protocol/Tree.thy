@@ -29,22 +29,24 @@ fun descending :: "Chain \<Rightarrow> bool" where
 "descending (c#cs) = (if sl c > sl (hd cs) then descending cs  else False)"
 
 definition valid_chain  :: "Chain \<Rightarrow> bool" where
-"valid_chain c =(if properly_linked c \<and> correct_blocks c \<and> descending c then True else False)"
+"valid_chain c =(if properly_linked c \<and> correct_blocks c \<and> descending c  then True else False)"
 value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
 
 value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 1 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 0 \<rparr>]"
 definition "Block0 = \<lparr> sl=0, txs = 0, pred =0, bid = 0\<rparr>"
 definition "Block1 = \<lparr> sl=1, txs = 1, pred =1, bid = 1\<rparr>"
-
+value "valid_chain [Block0]"
 
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
 
 (*concrete instance definition\<rightarrow>fun\<rightarrow>function power but also in inverse responsibility \<rightarrow> e.g. pattern matching/proving termination*)
 
 fun allBlocks :: "T \<Rightarrow> BlockPool" where
-"allBlocks (Node m l r) = allBlocks l@allBlocks r@ [m]"|
-"allBlocks (GenesisNode m l r) = allBlocks l@allBlocks r@ [m]" |
+"allBlocks (Node m l r) =[m]@ allBlocks l@allBlocks r "|
+"allBlocks (GenesisNode m l r) = [m]@allBlocks l@allBlocks r " |
 "allBlocks Leaf = []"
+
+
 value "allBlocks Leaf"
 value "allBlocks (GenesisNode Block0 Leaf Leaf)"
 
@@ -66,10 +68,10 @@ value "allBlocks (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf)"
 
 fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "bestChain slotvalue (GenesisNode m l r) = (bestChain slotvalue l)@(bestChain slotvalue r)@[m]"|
-"bestChain slotvalue (Node m l r) = (if slotvalue = sl m then (bestChain slotvalue l)@(bestChain slotvalue r)@[m] else []) "|
-"bestChain slotvalue Leaf  = []"
-
-value "bestChain 3 (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf)"
+"bestChain slotvalue (Node m l r) = (if slotvalue = sl m then (bestChain slotvalue l)@(bestChain slotvalue r)@[m] else []) "
+value "bestChain 1  (GenesisNode \<lparr>sl = 0, txs = 0, pred = 0, bid = 1\<rparr> (T.Node \<lparr>sl = 0, txs = 0, pred = 1, bid = 0\<rparr> T.Leaf T.Leaf)
+       (T.Node \<lparr>sl = 0, txs = 0, pred = 1, bid = 0\<rparr> T.Leaf T.Leaf))"
+value "valid_chain (bestChain 1 (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf))"
 
 fun matchingsl :: "T \<Rightarrow> Block \<Rightarrow> bool" where
 "matchingsl (Node m l r) Bl =(if sl Bl = sl m then True else False)"
@@ -77,32 +79,29 @@ fun matchingsl :: "T \<Rightarrow> Block \<Rightarrow> bool" where
 fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode m Leaf Leaf) Bl = (GenesisNode m (Node Bl Leaf Leaf) Leaf)"|
 "extendTree (Node m Leaf Leaf) Bl = (Node m (Node Bl Leaf Leaf) Leaf)"|
-"extendTree (GenesisNode m l Leaf) Bl =(if matchingsl l Bl then extendTree l Bl else (GenesisNode m l (Node Bl Leaf Leaf))) "|
-"extendTree (GenesisNode m l r) Bl = ( if matchingsl l Bl then extendTree l Bl else if matchingsl r Bl then extendTree r Bl else (GenesisNode m l r))"|
-"extendTree (Node m l Leaf) Bl = (if matchingsl l Bl then extendTree l Bl else (Node m l (Node Bl Leaf Leaf))) "|
-"extendTree (Node m l r) Bl = (if matchingsl l Bl then extendTree l Bl else if matchingsl r Bl then extendTree r Bl else (Node m l r))"
+"extendTree (GenesisNode m l Leaf) Bl =(if matchingsl l Bl then (GenesisNode m (extendTree l Bl) Leaf) else (GenesisNode m l (Node Bl Leaf Leaf))) "|
+"extendTree (GenesisNode m l r) Bl = ( if matchingsl l Bl then (GenesisNode m (extendTree l Bl) Leaf) else if matchingsl r Bl then (GenesisNode m l (extendTree r Bl)) else (GenesisNode m l r))"|
+"extendTree (Node m l Leaf) Bl = (if matchingsl l Bl then (Node m (extendTree l Bl) Leaf) else (Node m l (Node Bl Leaf Leaf))) "|
+"extendTree (Node m l r) Bl = (if matchingsl l Bl then (Node m (extendTree l Bl) Leaf) else if matchingsl r Bl then (Node m l (extendTree r Bl)) else (Node m l r))"
 
-value "extendTree (GenesisNode Block0 (Node Block0 Leaf Leaf) Leaf) Block1"
+value "validTree (extendTree (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf) Block1)"
+
+definition "tree0 = (GenesisNode Block0 Leaf Leaf)"
+
+lemma initialTree : "allBlocks (GenesisNode Block0 Leaf Leaf) = [Block0]" 
+  apply(auto)
+  done
+
+lemma AllExtend : " \<forall>t. \<forall>b. allBlocks (extendTree t b) =[b]@ allBlocks t" 
+  apply(auto)
+  done
+
+lemma BestValid : " \<forall>t. \<forall>s. validTree t \<and> allBlocks t = remdups (allBlocks t) \<longrightarrow> valid_chain (bestChain s t)" 
+  apply(auto)
+  done
 
 
-(*
-"extendTree (GenesisNode m l r) Bl =(if (mathingsl l Bl) then extendTree else extendTree r Bl)"*)
 
-
-
-
-(*|
-"extendTree (Node m Leaf Leaf) Bl = (Node m Bl Leaf) "|
-"extendTree Leaf Bl  = GenesisNode Bl Leaf Leaf"
-
-"extendTree (Node m l r) Bl = (Node m (extendTree l Bl) r)"|
-"extendTree (GenesisNode m Leaf Leaf) Bl = (Node m Bl Leaf)"
-*)
-
-(* all_tree0 T : @allBlocks T tree0  =i [:: GenesisBlock].*)
-(*forall t b, allBlocks (extendTree t b) =i allBlocks t ++ [:: b]*)
-(*forall s t, {subset (bestChain*)
-(*forall t s, valid_chain (bestChain s t)*)
 (*forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |bestChain s t|*)
 (*forall s t, {subset (bestChain s t) <= [seq b <- allBlocks t | sl b <= s]}*)
 
