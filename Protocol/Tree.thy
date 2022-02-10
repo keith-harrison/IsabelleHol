@@ -1,12 +1,6 @@
 theory Tree
 imports Main Block Variables "HOL-Library.Tree"
 begin
-(* Block Tree.
-   This file contains the definition of a treeType, which is the type of a blocktree. 
-   First, the [valid_chain] predicate is defined and afterwards is the treeType defined. 
-*)
-
-(*Notation*)
 
 definition correct_block :: "Block \<Rightarrow> bool" where
 "correct_block bl = (if (bid bl = sl bl)  then True else False)"
@@ -21,15 +15,14 @@ definition linked :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "linked b b' = (if pred b = HashB b' then True else False)"
 
 value "linked \<lparr> sl = 5, txs = 123, pred = 1, bid = 123 \<rparr> \<lparr> sl = 5, txs = 123, pred = 0, bid = 123 \<rparr>"
-value "linked \<lparr> sl = 5, txs = 123, pred = 0, bid = 123 \<rparr> \<lparr> sl = 5, txs = 123, pred = 1, bid = 123 \<rparr>"
+value "linked \<lparr> sl = 1, txs = 1, pred = 1, bid = 1 \<rparr> \<lparr> sl = 0, txs = 0, pred = 0, bid = 0 \<rparr>"
 
 fun properly_linked :: "Chain \<Rightarrow> bool" where
 "properly_linked [] = False"|
 "properly_linked [b] =(if pred b = 0 then True  else False)"|
 "properly_linked (c#cs) = (if linked c (hd cs) then properly_linked cs  else False)"
 
-(*Do it so sl are descending is a bit weird because they sort then lok for less than so feels like cheating*)
-(*check all attributed are correct*)
+
 fun descending :: "Chain \<Rightarrow> bool" where
 "descending [] = True"|
 "descending [b] = True"|
@@ -38,11 +31,12 @@ fun descending :: "Chain \<Rightarrow> bool" where
 definition valid_chain  :: "Chain \<Rightarrow> bool" where
 "valid_chain c =(if properly_linked c \<and> correct_blocks c \<and> descending c then True else False)"
 value "properly_linked [\<lparr> sl = 1, txs = 1, pred = 1, bid = 2 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>]"
-(*Chain goes  [bn,...,b3,b2,bgenesis]*)
+
 value "valid_chain [\<lparr> sl = 1, txs = 1, pred = 1, bid = 1 \<rparr>,\<lparr> sl=0, txs = 1, pred =0, bid = 0 \<rparr>]"
 definition "Block0 = \<lparr> sl=0, txs = 0, pred =0, bid = 0\<rparr>"
 definition "Block1 = \<lparr> sl=1, txs = 1, pred =1, bid = 1\<rparr>"
-(*might bite a bit later - GenesisNodes can exist mid tree*)
+
+
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
 
 (*concrete instance definition\<rightarrow>fun\<rightarrow>function power but also in inverse responsibility \<rightarrow> e.g. pattern matching/proving termination*)
@@ -53,6 +47,7 @@ fun allBlocks :: "T \<Rightarrow> BlockPool" where
 "allBlocks Leaf = []"
 value "allBlocks Leaf"
 value "allBlocks (GenesisNode Block0 Leaf Leaf)"
+
 (*functions ensure that pred is 0 ONLY for genesis node, and no genesis nodes exist in tree/no nodes at genesis location*)
 fun validTree' :: "T \<Rightarrow> bool" where
 "validTree' Leaf = True"|
@@ -69,19 +64,40 @@ value "validTree (Node Block0 Leaf Leaf)"
 value "validTree (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf)"
 value "allBlocks (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf)"
 
-(*maybe want to ensure that allblocks returns unique/set*)
-value "[a]@[]@[]@[1]" 
-(* postorder search similar to allblocks 2 but given Node m l r and slot value how to check subtree l or r using \<lparr> \<rparr> and accessing sl*)
 fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
+"bestChain slotvalue (GenesisNode m l r) = (bestChain slotvalue l)@(bestChain slotvalue r)@[m]"|
 "bestChain slotvalue (Node m l r) = (if slotvalue = sl m then (bestChain slotvalue l)@(bestChain slotvalue r)@[m] else []) "|
 "bestChain slotvalue Leaf  = []"
-(* similar to best chain but need to check sl value of block to put in correctly *)
-(*extendtree - add to longest chain/e.g. left more trustworthy/right choice in context maybe depending on sl or bid *)
-fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
-"extendTree (Node m l r) Bl = Node m (extendTree l Bl) r"|
-"extendTree (Node m Leaf Leaf) Bl = Node m Bl Leaf "|
-"extendTree Leaf Bl  = Node Bl Leaf Leaf"
 
+value "bestChain 3 (GenesisNode Block0 (Node Block1 Leaf Leaf) Leaf)"
+
+fun matchingsl :: "T \<Rightarrow> Block \<Rightarrow> bool" where
+"matchingsl (Node m l r) Bl =(if sl Bl = sl m then True else False)"
+(*make extend tree recursive put inside the tree def*)
+fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
+"extendTree (GenesisNode m Leaf Leaf) Bl = (GenesisNode m (Node Bl Leaf Leaf) Leaf)"|
+"extendTree (Node m Leaf Leaf) Bl = (Node m (Node Bl Leaf Leaf) Leaf)"|
+"extendTree (GenesisNode m l Leaf) Bl =(if matchingsl l Bl then extendTree l Bl else (GenesisNode m l (Node Bl Leaf Leaf))) "|
+"extendTree (GenesisNode m l r) Bl = ( if matchingsl l Bl then extendTree l Bl else if matchingsl r Bl then extendTree r Bl else (GenesisNode m l r))"|
+"extendTree (Node m l Leaf) Bl = (if matchingsl l Bl then extendTree l Bl else (Node m l (Node Bl Leaf Leaf))) "|
+"extendTree (Node m l r) Bl = (if matchingsl l Bl then extendTree l Bl else if matchingsl r Bl then extendTree r Bl else (Node m l r))"
+
+value "extendTree (GenesisNode Block0 (Node Block0 Leaf Leaf) Leaf) Block1"
+
+
+(*
+"extendTree (GenesisNode m l r) Bl =(if (mathingsl l Bl) then extendTree else extendTree r Bl)"*)
+
+
+
+
+(*|
+"extendTree (Node m Leaf Leaf) Bl = (Node m Bl Leaf) "|
+"extendTree Leaf Bl  = GenesisNode Bl Leaf Leaf"
+
+"extendTree (Node m l r) Bl = (Node m (extendTree l Bl) r)"|
+"extendTree (GenesisNode m Leaf Leaf) Bl = (Node m Bl Leaf)"
+*)
 
 (* all_tree0 T : @allBlocks T tree0  =i [:: GenesisBlock].*)
 (*forall t b, allBlocks (extendTree t b) =i allBlocks t ++ [:: b]*)

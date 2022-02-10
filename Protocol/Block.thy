@@ -4,10 +4,10 @@ begin
 
 (* Block *)
 record Block =
-  sl :: int
-  txs :: int
-  pred :: nat (*Hash*)
-  bid :: int
+  sl :: Slot
+  txs :: Transactions
+  pred :: Hash (*Hash*)
+  bid :: Party
 
 (* Type synononym for blocks change list to seq *)
 type_synonym Chain = "Block list"
@@ -31,7 +31,7 @@ definition isGen :: "Block \<Rightarrow> bool" where
 
 value "isGen \<lparr> sl=0, txs = 1, pred =0, bid = 1 \<rparr>"
 
-definition HashB :: "Block \<Rightarrow> nat" where
+definition HashB :: "Block \<Rightarrow> int" where
 "HashB bl = pred bl +1"
 
 

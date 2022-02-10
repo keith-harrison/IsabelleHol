@@ -6,7 +6,7 @@ datatype Transactions = Eqtype
 datatype Hash = nat
 datatype Party = finType
 
-type_synonym Slot = nat
+type_synonym Slot = int
 type_synonym SlotZero = nat
 
 type_synonym Delay = nat

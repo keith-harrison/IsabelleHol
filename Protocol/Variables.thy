@@ -2,17 +2,17 @@ theory Variables
   imports Main
 begin
 (* Variables - SLOTZERO *)
-datatype Transactions = Eqtype
-datatype Hash = nat
-datatype Party = finType
+type_synonym Transactions = int
+type_synonym Hash = int
+type_synonym Party = int
 
 type_synonym Slot = int
-type_synonym SlotZero = nat
+definition "(SlotZero::int) = 0"
 
 type_synonym Delay = nat
 type_synonym Parties = "Party list"
 
-datatype InitParties = Parties
+type_synonym InitParties = Parties
 
 
 end
