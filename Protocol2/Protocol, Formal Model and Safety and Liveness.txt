@@ -6,7 +6,7 @@ These are the content of messages send through the flooding network in teh proto
 Each party maintains a block tre that initially only contains a single blcok called the genesis block. when a block b is added to the block tree it will be added as a sucessor to the block in the tree with a hash that matches the predecessor of b. A path originating at the genesis block in a block tree is called a chain.
 
 The protocol proceeds in slots where each party will do the following for a slot:
--> collect all previous blocks that they have received since the last round through the flooding network and add these to their block tree if the signature is avalid and the identifier of the bock corresponds to a winning party for the round.
+-> collect all previous blocks that they have received since the last round through the flooding network and add these to their block tree if the signature is avalid and the identifier of the bock corresponds to a winning party for the round. -> corresponds to winning party id 
 -> Evaluate the lottery to check if they are a winner of this round. If they win this slot they will:
 -> -> Calculate lonest chain disregarding blcoks with a higher slot than the current slot. if there are multiple longest chains tie breaker used but is insignificant in this case
 -> -> Create a new block that will include a hash to the head of their best chain, the current slot, their identity and their signature.
