@@ -31,7 +31,7 @@ definition HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 
 
 
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [100000,100000],bid = 0\<rparr>"
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [100,100],bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = [0,0], bid = 1\<rparr>"
 value "HashB GenBlock Block1"
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
@@ -63,10 +63,10 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
 
+(*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
-(* issues with vvvv ~ kinda mitigated but dont know if bid Bl1 = bid Bl2*)
-value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 0, txs = 0, pred = 1, bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 0, txs = 0, pred = 1, bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred = 2, bid = 1\<rparr> "
-value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 0, txs = 0, pred = 2, bid = 0\<rparr> "
+value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred = [1,2], bid = 1\<rparr> "
+value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = [1,2], bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 
 
@@ -77,7 +77,8 @@ fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "bestChain slot (GenesisNode Bl1 (Node Bl2 t1 t2) Leaf) =  (if sl Bl2  \<le> slot then (bestChain slot t1)@(bestChain slot t2)@[Bl1] else [Bl1])"|
 "bestChain slot (Node Bl1 t1 Leaf) =  (if sl Bl1 = slot then (bestChain slot t1)@[Bl1] else [])"
 
-
+value "bestChain 2 (GenesisNode \<lparr>sl = 0, txs = 0, pred = [100, 100], bid = 0\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 1\<rparr> Leaf Leaf)
+  (Node \<lparr>sl = 1, txs = 1, pred = [0, 0], bid = 2\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = [1, 2], bid = 1\<rparr> Leaf Leaf) Leaf))"
 (*
 "bestChain slot (GenesisNode Bl1 t1 t2) = "|
 "bestChain slot (Node Bl1 t1 t2) =  (if sl Bl1 = slot then (bestChain slot t1)@[Bl1] else (if sl Bl = slot then (bestChain slot t2)@[Bl1] else []))""
