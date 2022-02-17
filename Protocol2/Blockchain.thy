@@ -34,8 +34,8 @@ definition HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = ((hd (pred bl2) =sl bl1) \<and> (hd (tl (pred bl2)) = bid bl1))"
 
 
-
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [100,100],bid = 0\<rparr>"
+(*maybe values from haskell*)
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [],bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = [0,0], bid = 1\<rparr>"
 (*
 definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = Hashing 100 100,bid = 0\<rparr>"
@@ -69,10 +69,58 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 t1 Leaf) Bl2 =  (if HashB Bl1 Bl2  then (GenesisNode Bl1 t1 (Node Bl2 Leaf Leaf)) else (GenesisNode Bl1 (extendTree t1 Bl2) Leaf))"|
 "extendTree (Node Bl1 t1 Leaf) Bl2 =  (if HashB Bl1 Bl2 then (Node Bl1 t1 (Node Bl2 Leaf Leaf)) else (Node Bl1 (extendTree t1 Bl2) Leaf))"|
 "extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
-"extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
+"extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
+"extendTree Leaf Bl2 = Leaf"
 
 (*need to fix these counter examples \<rightarrow> probably by making pred field a datatype having two be two nats *)
-lemma AllExtend : " \<forall>t. \<forall>b. allBlocks (extendTree t b) =[b]@ allBlocks t" 
+ 
+lemma "extendTree Leaf B = Leaf" apply(simp) done
+
+lemma AllExtend : "extendTree t b \<noteq> t \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+proof(induction t)
+  case Leaf
+  then show ?case by simp
+next
+  case (GenesisNode x1 t1 t2) note ABC=this
+  then show ?case proof (cases "t1") 
+    case Leaf note t1Leaf=this
+    then show ?thesis proof (cases "t2")
+      case Leaf
+      then show ?thesis using ABC t1Leaf
+        by auto   
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis using ABC t1Leaf
+        by auto
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis using ABC t1Leaf
+        by auto
+    qed
+  next
+    case (GenesisNode x21 x22 x23) note GenNode1=this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using ABC GenNode1 
+        by auto
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis using ABC GenNode1 
+        by fastforce
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis using ABC GenNode1 
+        by fastforce
+    qed
+  next
+    case (Node x31 x32 x33) note Node1=this
+    then show ?thesis proof(cases "") sorry
+  qed sorry
+next
+  case (Node x1 t1 t2)
+  then show ?case sorry
+qed
+  done
   
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
