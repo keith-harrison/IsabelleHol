@@ -2,9 +2,10 @@ theory Blockchain
   imports Main "HOL-Library.Tree"
 begin
 type_synonym Transactions = nat
-type_synonym Hash = "nat list"
+
 type_synonym Party = nat
 type_synonym Slot = nat
+datatype Hash = H nat nat
 definition "Slotzero = 0"
 type_synonym Delay = nat
 type_synonym Parties = "Party list"
@@ -25,14 +26,15 @@ type_synonym BlockPool = "Block list"
 (*
 value "hd [bid,b]"
 value "tl [bid,b]"*)
-
+definition getHashing :: "Block \<Rightarrow> Hash" where
+"getHashing \<lparr>sl=_,txs=_,pred=Hashing a b,bid=_\<rparr> = Hashing a b"
 definition HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = ((hd (pred bl2) =sl bl1) \<and> (hd (tl (pred bl2)) = bid bl1))"
 
 
 
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [100,100],bid = 0\<rparr>"
-definition "Block1 = \<lparr>sl = 1, txs =1, pred = [0,0], bid = 1\<rparr>"
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = Hashing 100 100,bid = 0\<rparr>"
+definition "Block1 = \<lparr>sl = 1, txs =1, pred = Hashing 0 0, bid = 1\<rparr>"
 value "HashB GenBlock Block1"
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
 "valid_blocks b1 b2 = (Winner (sl b1) (bid b1) \<and> HashB b2 b1 \<and> (sl b2 < sl b1)) "
@@ -54,7 +56,6 @@ definition "tree0 = GenesisNode GenBlock Leaf Leaf"
 lemma initialTree : "allBlocks tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)
 
-value "height_tree tree0"
 
 fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 Leaf Leaf) Bl2 = (if (HashB Bl1 Bl2) then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
@@ -64,20 +65,27 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
 
+lemma AllExtend : " \<forall>t. \<forall>b. allBlocks (extendTree t b) =[b]@ allBlocks t" 
+  
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred = [1,2], bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = [1,2], bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 
-fun height_blocktree :: "T \<Rightarrow> nat" where
-"height Leaf = 0" |
-"height (GenesisNode Bl l r) = max (height l) (height r) + 1"
+
+
+fun returnsl :: "T \<Rightarrow> Slot \<Rightarrow> bool" where
+"returnsl (GenesisNode Bl1 l r) slot = ((sl Bl1) \<le> slot)"|
+"returnsl (Node Bl1 l r) slot = ((sl Bl1) \<le> slot)"
 
 fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "bestChain slot (GenesisNode Bl1 Leaf Leaf) = [Bl1]"|
 "bestChain slot (Node Bl1 Leaf Leaf) = [Bl1]"|
-"bestChain slot (GenesisNode Bl1 t1 Leaf) = [Bl1]"
+"bestChain slot (GenesisNode Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"|
+"bestChain slot (Node Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"
+
+
 
 
 (*

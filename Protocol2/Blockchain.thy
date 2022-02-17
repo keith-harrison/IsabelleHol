@@ -5,7 +5,8 @@ type_synonym Transactions = nat
 
 type_synonym Party = nat
 type_synonym Slot = nat
-datatype Hash = H nat nat
+(*datatype Hash = H nat nat"*)
+type_synonym Hash = "nat list"
 definition "Slotzero = 0"
 type_synonym Delay = nat
 type_synonym Parties = "Party list"
@@ -26,15 +27,20 @@ type_synonym BlockPool = "Block list"
 (*
 value "hd [bid,b]"
 value "tl [bid,b]"*)
+(*
 definition getHashing :: "Block \<Rightarrow> Hash" where
-"getHashing \<lparr>sl=_,txs=_,pred=Hashing a b,bid=_\<rparr> = Hashing a b"
+"getHashing \<lparr>sl=_,txs=_,pred=Hashing a b,bid=_\<rparr> = Hashing a b"*)
 definition HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = ((hd (pred bl2) =sl bl1) \<and> (hd (tl (pred bl2)) = bid bl1))"
 
 
 
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [100,100],bid = 0\<rparr>"
+definition "Block1 = \<lparr>sl = 1, txs =1, pred = [0,0], bid = 1\<rparr>"
+(*
 definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = Hashing 100 100,bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = Hashing 0 0, bid = 1\<rparr>"
+*)
 value "HashB GenBlock Block1"
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
 "valid_blocks b1 b2 = (Winner (sl b1) (bid b1) \<and> HashB b2 b1 \<and> (sl b2 < sl b1)) "
@@ -65,6 +71,7 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
 
+(*need to fix these counter examples \<rightarrow> probably by making pred field a datatype having two be two nats *)
 lemma AllExtend : " \<forall>t. \<forall>b. allBlocks (extendTree t b) =[b]@ allBlocks t" 
   
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
