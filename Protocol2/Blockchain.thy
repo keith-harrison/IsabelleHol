@@ -5,8 +5,9 @@ type_synonym Transactions = nat
 
 type_synonym Party = nat
 type_synonym Slot = nat
-(*datatype Hash = H nat nat"*)
-type_synonym Hash = "nat list"
+
+(*type_synonym Hash = "nat list"*)
+datatype Hash = H nat nat
 definition "Slotzero = 0"
 type_synonym Delay = nat
 type_synonym Parties = "Party list"
@@ -24,19 +25,18 @@ record Block =
 type_synonym Chain = "Block list"
 type_synonym Chains = "Chain list"
 type_synonym BlockPool = "Block list"
-(*
-value "hd [bid,b]"
-value "tl [bid,b]"*)
-(*
-definition getHashing :: "Block \<Rightarrow> Hash" where
-"getHashing \<lparr>sl=_,txs=_,pred=Hashing a b,bid=_\<rparr> = Hashing a b"*)
-definition HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
-"HashB bl1 bl2 = ((hd (pred bl2) =sl bl1) \<and> (hd (tl (pred bl2)) = bid bl1))"
 
 
-(*maybe values from haskell*)
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = [],bid = 0\<rparr>"
-definition "Block1 = \<lparr>sl = 1, txs =1, pred = [0,0], bid = 1\<rparr>"
+
+fun HashCompare :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
+"HashCompare (H a b) bl1 = (if ((a = sl bl1) \<and> (b = bid bl1)) then True else False)"
+
+fun HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
+"HashB bl1 bl2 = HashCompare (pred bl2) bl1"
+
+
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = H 0 0,bid = 0\<rparr>"
+definition "Block1 = \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>"
 (*
 definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = Hashing 100 100,bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = Hashing 0 0, bid = 1\<rparr>"
@@ -74,7 +74,8 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 
 (*need to fix these counter examples \<rightarrow> probably by making pred field a datatype having two be two nats *)
  
-lemma "extendTree Leaf B = Leaf" apply(simp) done
+lemma "extendTree Leaf B = Leaf" 
+  by simp
 
 lemma AllExtend : "extendTree t b \<noteq> t \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(induction t)
@@ -114,18 +115,68 @@ next
     qed
   next
     case (Node x31 x32 x33) note Node1=this
-    then show ?thesis proof(cases "") sorry
-  qed sorry
+    then show ?thesis proof(cases "t2" )
+      case Leaf
+      then show ?thesis using ABC Node1 by auto
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis using ABC Node1 by fastforce
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis using ABC Node1 by fastforce
+    qed 
+  qed 
 next
-  case (Node x1 t1 t2)
-  then show ?case sorry
+  case (Node x1 t1 t2) note NodeA = this
+  then show ?case proof(cases "t1")
+    case Leaf note t2Leaf=this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using NodeA t2Leaf
+        by auto
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis  using NodeA t2Leaf
+        by auto
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis  using NodeA t2Leaf
+        by auto
+    qed
+  next
+    case (GenesisNode x21 x22 x23) note t2GenNodeA = this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using t2GenNodeA NodeA
+        by auto
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis  using t2GenNodeA NodeA by fastforce
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis using t2GenNodeA NodeA by fastforce
+    qed
+  next
+    case (Node x31 x32 x33) note t2NodeA = this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using NodeA t2NodeA by auto
+    next
+      case (GenesisNode x21 x22 x23)
+      then show ?thesis using NodeA t2NodeA 
+        by fastforce
+    next
+      case (Node x31 x32 x33)
+      then show ?thesis using NodeA t2NodeA by fastforce
+    qed
+  qed 
 qed
-  done
+
   
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
-value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = [0,0], bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred = [1,2], bid = 1\<rparr> "
-value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = [1,2], bid = 1\<rparr> "
+value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred =H 1 2, bid = 1\<rparr> "
+value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = H 1 2, bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 
 
@@ -135,16 +186,10 @@ fun returnsl :: "T \<Rightarrow> Slot \<Rightarrow> bool" where
 "returnsl (Node Bl1 l r) slot = ((sl Bl1) \<le> slot)"
 
 fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
-"bestChain slot (GenesisNode Bl1 Leaf Leaf) = [Bl1]"|
+"bestChain slot Leaf = []"|
 "bestChain slot (Node Bl1 Leaf Leaf) = [Bl1]"|
-"bestChain slot (GenesisNode Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"|
-"bestChain slot (Node Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"
+"bestChain slot (Node Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"|
+"bestChain slot (Node Bl1 t1 t2) = (if (returnsl t1 slot \<and> returnsl t2 slot) then (bestChain slot t1 @bestChain slot t2@[Bl1]) else (if (returnsl t2 slot) then (bestChain slot t2@[Bl1])else(if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])))"
+(*return a list similar to allblocks but then use aux function to get the longest valid_chain result*)
 
 
-
-
-(*
-"bestChain slot (GenesisNode Bl1 t1 t2) = "|
-"bestChain slot (Node Bl1 t1 t2) =  (if sl Bl1 = slot then (bestChain slot t1)@[Bl1] else (if sl Bl = slot then (bestChain slot t2)@[Bl1] else []))""
- (if sl Bl1 = slot then [Bl1] else [])
-*)
