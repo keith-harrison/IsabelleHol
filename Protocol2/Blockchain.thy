@@ -29,7 +29,7 @@ type_synonym BlockPool = "Block list"
 
 
 fun HashCompare :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
-"HashCompare (H a b) bl1 = ((H a b) = pred bl1)"
+"HashCompare (H a b) bl1 = (if ((a = sl bl1) \<and> (b = bid bl1)) then True else False)"
 
 fun HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = HashCompare (pred bl2) bl1"
@@ -51,7 +51,7 @@ fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 then valid_chain c else False) "
 value "valid_chain [\<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
-value "HashB \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr> \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>"
+value "HashB  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
 (*tree time*)
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
 
@@ -181,7 +181,6 @@ next
   qed 
 qed
 
-  
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred =H 1 2, bid = 1\<rparr> "
@@ -193,23 +192,20 @@ fun returnsl :: "T \<Rightarrow> Slot \<Rightarrow> bool" where
 "returnsl (GenesisNode Bl1 l r) slot = ((sl Bl1) \<le> slot)"|
 "returnsl (Node Bl1 l r) slot = ((sl Bl1) \<le> slot)"
 
-fun best_c where 
-"best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in list')"
-(*in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"*)
+fun best_c :: "nat \<Rightarrow> Block list list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
+"best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
-(*Find one of length slot, make some big trees*)
-value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
+definition get_first :: \<open>(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list\<close> where
+\<open>get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)\<close>
+(*need to access the tuple part*)
+fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Block list" where
+"best_chain slot T = get_first ( best_c slot (allBlocks' T))"
+
+value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
+
 value "allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
-(*([\<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>] *)
 
-(*
-fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
-"bestChain slot Leaf = []"|
-"bestChain slot (Node Bl1 Leaf Leaf) = [Bl1]"|
-"bestChain slot (Node Bl1 t1 Leaf) = (if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])"|
-"bestChain slot (Node Bl1 t1 t2) = (if (returnsl t1 slot \<and> returnsl t2 slot) then (bestChain slot t1 @bestChain slot t2@[Bl1]) else (if (returnsl t2 slot) then (bestChain slot t2@[Bl1])else(if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])))"
-(*return a list similar to allblocks but then use aux function to get the longest valid_chain result*)
-
-*)
+value "best_chain 3 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf))"
