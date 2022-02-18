@@ -12,10 +12,10 @@ definition "Slotzero = 0"
 type_synonym Delay = nat
 type_synonym Parties = "Party list"
  
-(*make a list of values in a list pick one at a time list of length n parties - currently n limited as n = 2 due to being a binary tree.*)
 fun Winner :: "Party \<Rightarrow> Slot \<Rightarrow> bool" where
 "Winner P S = (if P = S then True else False)"
 
+(*"Hash option"*)
 record Block =
   sl :: Slot
   txs :: Transactions
@@ -29,33 +29,44 @@ type_synonym BlockPool = "Block list"
 
 
 fun HashCompare :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
-"HashCompare (H a b) bl1 = (if ((a = sl bl1) \<and> (b = bid bl1)) then True else False)"
+"HashCompare (H a b) bl1 = ((H a b) = pred bl1)"
 
 fun HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = HashCompare (pred bl2) bl1"
 
-
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = H 0 0,bid = 0\<rparr>"
+(*Hash option \<rightarrow> None*)
+definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = H 0 0 ,bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>"
-(*
-definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = Hashing 100 100,bid = 0\<rparr>"
-definition "Block1 = \<lparr>sl = 1, txs =1, pred = Hashing 0 0, bid = 1\<rparr>"
-*)
+
 value "HashB GenBlock Block1"
+
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
 "valid_blocks b1 b2 = (Winner (sl b1) (bid b1) \<and> HashB b2 b1 \<and> (sl b2 < sl b1)) "
+
 value "valid_blocks Block1 GenBlock"
 value "a#b#[c,d]"
+
 fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [] = True"|
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 then valid_chain c else False) "
+value "valid_chain [\<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
+value "HashB \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr> \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>"
 (*tree time*)
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
+
 fun allBlocks :: "T \<Rightarrow> BlockPool" where
 "allBlocks (Node m l r) = allBlocks l@allBlocks r @[m]"|
 "allBlocks (GenesisNode m l r) = allBlocks l@allBlocks r @[m] " |
 "allBlocks Leaf = []"
+(* want list of lists*)
+fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool list" where
+"allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
+
+fun allBlocks' :: "T \<Rightarrow> BlockPool list" where
+"allBlocks' (Node m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
+"allBlocks' (GenesisNode m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
+"allBlocks' Leaf = [[]]"
 
 definition "tree0 = GenesisNode GenBlock Leaf Leaf"
 
@@ -71,8 +82,6 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree Leaf Bl2 = Leaf"
-
-(*need to fix these counter examples \<rightarrow> probably by making pred field a datatype having two be two nats *)
  
 lemma "extendTree Leaf B = Leaf" 
   by simp
@@ -147,14 +156,14 @@ next
     case (GenesisNode x21 x22 x23) note t2GenNodeA = this
     then show ?thesis proof(cases "t2")
       case Leaf
-      then show ?thesis using t2GenNodeA NodeA
+      then show ?thesis using NodeA t2GenNodeA
         by auto
     next
       case (GenesisNode x21 x22 x23)
-      then show ?thesis  using t2GenNodeA NodeA by fastforce
+      then show ?thesis  using NodeA t2GenNodeA  by fastforce
     next
       case (Node x31 x32 x33)
-      then show ?thesis using t2GenNodeA NodeA by fastforce
+      then show ?thesis using NodeA t2GenNodeA  by fastforce
     qed
   next
     case (Node x31 x32 x33) note t2NodeA = this
@@ -179,12 +188,23 @@ value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 
 value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = H 1 2, bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 
-
-
 fun returnsl :: "T \<Rightarrow> Slot \<Rightarrow> bool" where
+"returnsl Leaf slot = False"|
 "returnsl (GenesisNode Bl1 l r) slot = ((sl Bl1) \<le> slot)"|
 "returnsl (Node Bl1 l r) slot = ((sl Bl1) \<le> slot)"
 
+fun best_c where 
+"best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in list')"
+(*in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"*)
+
+(*Find one of length slot, make some big trees*)
+value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
+value "allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
+(*([\<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>] *)
+
+(*
 fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "bestChain slot Leaf = []"|
 "bestChain slot (Node Bl1 Leaf Leaf) = [Bl1]"|
@@ -192,4 +212,4 @@ fun bestChain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "bestChain slot (Node Bl1 t1 t2) = (if (returnsl t1 slot \<and> returnsl t2 slot) then (bestChain slot t1 @bestChain slot t2@[Bl1]) else (if (returnsl t2 slot) then (bestChain slot t2@[Bl1])else(if (returnsl t1 slot) then (bestChain slot t1 @[Bl1]) else [Bl1])))"
 (*return a list similar to allblocks but then use aux function to get the longest valid_chain result*)
 
-
+*)
