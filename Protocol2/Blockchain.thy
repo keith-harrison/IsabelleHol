@@ -34,7 +34,6 @@ fun HashCompare :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
 fun HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashB bl1 bl2 = HashCompare (pred bl2) bl1"
 
-(*Hash option \<rightarrow> None*)
 definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = H 0 0 ,bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>"
 
@@ -46,11 +45,14 @@ fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
 value "valid_blocks Block1 GenBlock"
 value "a#b#[c,d]"
 
+(*checking for b's being a node only and a /genesis node at the end of the list missing*)
 fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [] = True"|
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
-"valid_chain (b1#b2#c) = (if valid_blocks b1 b2 then valid_chain c else False) "
-value "valid_chain [\<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
+"valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
+
+
+value "valid_chain [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
 value "HashB  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
 (*tree time*)
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
@@ -187,20 +189,46 @@ value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 
 value "extendTree (GenesisNode GenBlock (Node Block1 Leaf Leaf) Leaf) \<lparr>sl = 1, txs = 1, pred = H 1 2, bid = 1\<rparr> "
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 
-fun returnsl :: "T \<Rightarrow> Slot \<Rightarrow> bool" where
-"returnsl Leaf slot = False"|
-"returnsl (GenesisNode Bl1 l r) slot = ((sl Bl1) \<le> slot)"|
-"returnsl (Node Bl1 l r) slot = ((sl Bl1) \<le> slot)"
+
 
 fun best_c :: "nat \<Rightarrow> Block list list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
 definition get_first :: \<open>(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list\<close> where
 \<open>get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)\<close>
+
+lemma best_c_none : "best_c n [] = None"
+  by(simp)
+
+(*lemma by achim*)
+lemma find_in : \<open>find p ls = Some l\<Longrightarrow> l\<in> set(ls)\<close>
+proof(induction ls)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a ls)
+  then show ?case
+    by (metis find_Some_iff nth_mem)
+qed
+
+lemma best_c_in : "best_c n bl \<noteq> None \<Longrightarrow>  get_first(best_c n bl) \<in> set(bl)"
+  apply(simp add:get_first_def find_in)
+proof(induction bl)
+  case Nil
+  then show ?case
+    by simp 
+next
+  case (Cons a bl)
+  then show ?case
+    by auto
+qed
+
 (*need to access the tuple part*)
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Block list" where
-"best_chain 0 T = [GenBlock]"|
-"best_chain slot T = get_first ( best_c slot (allBlocks' T))"
+"best_chain s Leaf = []"|
+"best_chain 0 (GenesisNode x _ _) = (if x = GenBlock then [GenBlock]else [])"|
+"best_chain s (Node x _ _) = []"|
+"best_chain s T = get_first ( best_c s (allBlocks' T))"
 
 value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
@@ -211,15 +239,49 @@ value "allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H
 value "best_chain 2 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf))"
 
-value "best_chain 1 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> Leaf Leaf) Leaf )"
+value "best_chain 1 (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
+value "allBlocks'  (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
+definition valid_t where
+"valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
+
+lemma best_valid_simple : "0 < s \<and> best_chain s t \<noteq> [] \<and> valid_t t \<Longrightarrow> best_chain s t \<in> set(allBlocks' t)"
+proof (induction t)
+  case Leaf
+  then show ?case
+    by simp
+next
+  case (GenesisNode x1 t1 t2)
+  then show ?case using valid_t_def try  sorry
+next
+  case (Node x1 t1 t2)
+  then show ?case
+    by auto
+qed
+
+
 (*valid forall t s, valid_chain (@bestChain T s t).*)
-lemma best_valid :"\<forall>s. \<forall>t. valid_chain (best_chain s t) = True"
-  done
+lemma best_valid :"valid_chain (best_chain s t)"
+  proof(induction t)
+    case Leaf
+    then show ?case by simp
+  next
+    case (GenesisNode x1 t1 t2)
+    then show ?case   sorry
+  next
+    case (Node x1 t1 t2)
+    then show ?case sorry
+  qed
+
+
+
+
+
+
 
 (*optimal forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |@bestChain T s t|*)
 lemma best_optimal : "valid_chain c \<Longrightarrow>subset of c \<le> allblocks t where sl b\<le> s \<Longrightarrow> |c| \<le> |best_chain s t|"
 (*self-contained forall s t, {subset (bestChain s t) <= [seq b <- @allBlocks T t | sl b <= s]}.*)
-
+lemma best_selfcontained
 
 
 
