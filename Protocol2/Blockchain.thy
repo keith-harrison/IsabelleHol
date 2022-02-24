@@ -199,6 +199,7 @@ definition get_first :: \<open>(Block list \<times> nat \<times> bool) option \<
 \<open>get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)\<close>
 (*need to access the tuple part*)
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Block list" where
+"best_chain 0 T = [GenBlock]"|
 "best_chain slot T = get_first ( best_c slot (allBlocks' T))"
 
 value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
@@ -207,5 +208,18 @@ value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, 
 value "allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
 
-value "best_chain 3 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
+value "best_chain 2 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf))"
+
+value "best_chain 1 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> Leaf Leaf) Leaf )"
+(*valid forall t s, valid_chain (@bestChain T s t).*)
+lemma best_valid :"\<forall>s. \<forall>t. valid_chain (best_chain s t) = True"
+  done
+
+(*optimal forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |@bestChain T s t|*)
+lemma best_optimal : "valid_chain c \<Longrightarrow>subset of c \<le> allblocks t where sl b\<le> s \<Longrightarrow> |c| \<le> |best_chain s t|"
+(*self-contained forall s t, {subset (bestChain s t) <= [seq b <- @allBlocks T t | sl b <= s]}.*)
+
+
+
+
