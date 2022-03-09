@@ -47,7 +47,7 @@ value "a#b#[c,d]"
 
 (*checking for b's being a node only and a /genesis node at the end of the list missing*)
 fun valid_chain :: "Chain \<Rightarrow> bool" where
-"valid_chain [] = True"|
+"valid_chain [] = False"|
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
 
@@ -65,9 +65,14 @@ fun allBlocks :: "T \<Rightarrow> BlockPool" where
 fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool list" where
 "allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
 
+fun allBlocks2 :: "T \<Rightarrow> BlockPool list" where
+"allBlocks2 (Node m l r) = allBlocksAppend m (allBlocks2 l) @allBlocksAppend m (allBlocks2 r)"|
+"allBlocks2 (GenesisNode m l r) = [[]]"|
+"allBlocks2 Leaf = [[]]"
+
 fun allBlocks' :: "T \<Rightarrow> BlockPool list" where
-"allBlocks' (Node m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
-"allBlocks' (GenesisNode m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
+"allBlocks' (Node m l r) = [[]]"|
+"allBlocks' (GenesisNode m l r) = allBlocksAppend m (allBlocks2 l) @allBlocksAppend m (allBlocks2 r)"|
 "allBlocks' Leaf = [[]]"
 
 definition "tree0 = GenesisNode GenBlock Leaf Leaf"
@@ -223,7 +228,6 @@ next
     by auto
 qed
 
-(*need to access the tuple part*)
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Block list" where
 "best_chain s Leaf = []"|
 "best_chain 0 (GenesisNode x _ _) = (if x = GenBlock then [GenBlock]else [])"|
@@ -236,40 +240,29 @@ value "best_c (3::nat) (allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, 
 value "allBlocks' ((GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
 
-value "best_chain 2 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
- (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf))"
+value "valid_chain (best_chain 2 (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
 
 value "best_chain 1 (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
 value "allBlocks'  (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
 definition valid_t where
 "valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
 
-lemma best_valid_simple : "0 < s \<and> best_chain s t \<noteq> [] \<and> valid_t t \<Longrightarrow> best_chain s t \<in> set(allBlocks' t)"
-proof (induction t)
-  case Leaf
-  then show ?case
-    by simp
-next
-  case (GenesisNode x1 t1 t2)
-  then show ?case using valid_t_def try  sorry
-next
-  case (Node x1 t1 t2)
-  then show ?case
-    by auto
-qed
-
+value "valid_t (GenesisNode GenBlock Leaf Leaf)"
 
 (*valid forall t s, valid_chain (@bestChain T s t).*)
-lemma best_valid :"valid_chain (best_chain s t)"
+lemma best_valid :"valid_t t \<and> (allBlocks' t \<noteq>[[]]) \<Longrightarrow> valid_chain (best_chain s t)"
   proof(induction t)
     case Leaf
-    then show ?case by simp
+    then show ?case
+      by simp
   next
     case (GenesisNode x1 t1 t2)
-    then show ?case   sorry
+    then show ?case try
   next
     case (Node x1 t1 t2)
-    then show ?case sorry
+    then show ?case
+      by simp
   qed
 
 

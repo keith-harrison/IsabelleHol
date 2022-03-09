@@ -54,14 +54,15 @@ fun valid_chain :: "Chain \<Rightarrow> bool" where
 
 value "valid_chain [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
 value "HashB  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
-(*tree time*)
+
+
 datatype T = Leaf | GenesisNode Block T T | Node Block T T   
 
 fun allBlocks :: "T \<Rightarrow> BlockPool" where
 "allBlocks (Node m l r) = allBlocks l@allBlocks r @[m]"|
 "allBlocks (GenesisNode m l r) = allBlocks l@allBlocks r @[m] " |
 "allBlocks Leaf = []"
-(* want list of lists*)
+
 fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool list" where
 "allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
 
@@ -258,7 +259,7 @@ lemma best_valid :"valid_t t \<and> (allBlocks' t \<noteq>[[]]) \<Longrightarrow
       by simp
   next
     case (GenesisNode x1 t1 t2)
-    then show ?case try
+    then show ?case 
   next
     case (Node x1 t1 t2)
     then show ?case
