@@ -273,7 +273,7 @@ lemma best_valid :"valid_t t \<and> (allBlocks' t \<noteq>[[]]) \<Longrightarrow
 
 
 (*optimal forall c s t, valid_chain c -> {subset c <= [seq b <- allBlocks t | sl b <= s]} -> |c| <= |@bestChain T s t|*)
-lemma best_optimal : "valid_chain c \<Longrightarrow>subset of c \<le> allblocks t where sl b\<le> s \<Longrightarrow> |c| \<le> |best_chain s t|"
+lemma best_optimal : "valid_chain c \<subseteq> c \<le> allblocks t where sl b\<le> s \<Longrightarrow> |c| \<le> |best_chain s t|"
 (*self-contained forall s t, {subset (bestChain s t) <= [seq b <- @allBlocks T t | sl b <= s]}.*)
 
 
