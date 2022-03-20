@@ -63,7 +63,7 @@ fun allBlocks :: "T \<Rightarrow> BlockPool" where
 "allBlocks Leaf = []"
 
 fun allBlocksGen :: "GenT \<Rightarrow> BlockPool" where
-"allBlocksGen (GenesisNode m l r) = allBlocks l@allBlocks r @[m] "
+"allBlocksGen (GenesisNode m l r) = (allBlocks l)@(allBlocks r)@[m] "
 
 fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool list" where
 "allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
