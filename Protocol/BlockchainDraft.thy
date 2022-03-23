@@ -1,4 +1,4 @@
-theory Blockchain
+theory BlockchainDraft
   imports Main "HOL-Library.Tree"
 begin
 type_synonym Transactions = nat
@@ -56,63 +56,55 @@ value "valid_chain [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lp
 value "HashB  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
 
 
-datatype T = Leaf | GenesisNode Block T T | Node Block T T   
+ 
+datatype T = Leaf | Node Block T T 
+datatype GenT = GenesisNode Block T T
 
 fun allBlocks :: "T \<Rightarrow> BlockPool" where
 "allBlocks (Node m l r) = allBlocks l@allBlocks r @[m]"|
-"allBlocks (GenesisNode m l r) = allBlocks l@allBlocks r @[m] " |
 "allBlocks Leaf = []"
+
+fun allBlocksGen :: "GenT \<Rightarrow> BlockPool" where
+"allBlocksGen (GenesisNode m l r) = allBlocks l@allBlocks r @[m] "
 
 fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool list" where
 "allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
 
-fun allBlocks2 :: "T \<Rightarrow> BlockPool list" where
-"allBlocks2 (Node m l r) = allBlocksAppend m (allBlocks2 l) @allBlocksAppend m (allBlocks2 r)"|
-"allBlocks2 (GenesisNode m l r) = [[]]"|
-"allBlocks2 Leaf = [[]]"
-
 fun allBlocks' :: "T \<Rightarrow> BlockPool list" where
-"allBlocks' (Node m l r) = [[]]"|
-"allBlocks' (GenesisNode m l r) = allBlocksAppend m (allBlocks2 l) @allBlocksAppend m (allBlocks2 r)"|
+"allBlocks' (Node m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
 "allBlocks' Leaf = [[]]"
+
+fun allBlocksGen' :: "GenT \<Rightarrow> BlockPool list" where
+"allBlocksGen' (GenesisNode m l r) =  allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"
 
 definition "tree0 = GenesisNode GenBlock Leaf Leaf"
 
-lemma initialTree : "allBlocks tree0 = [GenBlock]" 
+lemma initialTree : "allBlocksGen tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)
-
-fun validTree :: "T \<Rightarrow> bool" where
-"validTree (Node _ t1 t2) = (True \<and> validTree t1 \<and> validTree t2)"|
-"validTree (GenesisNode _ _ _) = False"|
-"validTree Leaf = True"
-
-
-fun validTreeGen :: "T \<Rightarrow> bool" where
-"validTreeGen (GenesisNode _ t1 t2) = (True \<and> validTree t1 \<and> validTree t2)"|
-"validTreeGen (Node _ _ _) = False"|
-"validTreeGen Leaf = False"
-
 
 
 fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
-"extendTree (GenesisNode Bl1 Leaf Leaf) Bl2 = (if (valid_blocks Bl2 Bl1) then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
 "extendTree (Node Bl1 Leaf Leaf) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) Leaf) else (Node Bl1 Leaf Leaf)) "|
-"extendTree (GenesisNode Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1  then (GenesisNode Bl1 t1 (Node Bl2 Leaf Leaf)) else (GenesisNode Bl1 (extendTree t1 Bl2) Leaf))"|
 "extendTree (Node Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 t1 (Node Bl2 Leaf Leaf)) else (Node Bl1 (extendTree t1 Bl2) Leaf))"|
 "extendTree (Node Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) t1) else (Node Bl1  Leaf (extendTree t1 Bl2)))"|
-"extendTree (GenesisNode Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) t1) else (GenesisNode Bl1  Leaf (extendTree t1 Bl2)))"|
-"extendTree (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree Leaf Bl2 = Leaf"
 
-lemma "extendTree Leaf B = Leaf" 
+fun extendTreeGen :: "GenT \<Rightarrow> Block \<Rightarrow> GenT" where
+"extendTreeGen (GenesisNode Bl1 Leaf Leaf) Bl2 = (if (valid_blocks Bl2 Bl1) then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
+"extendTreeGen (GenesisNode Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1  then (GenesisNode Bl1 t1 (Node Bl2 Leaf Leaf)) else (GenesisNode Bl1 (extendTree t1 Bl2) Leaf))"|
+"extendTreeGen (GenesisNode Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) t1) else (GenesisNode Bl1  Leaf (extendTree t1 Bl2)))"|
+"extendTreeGen (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
+
+lemma "extendTree Leaf B = Leaf"
   by simp
 
-lemma AllExtend : "extendTree t b \<noteq> t \<and> validTreeGen t \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+
+
+value "extendTreeGen (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> T.Leaf T.Leaf)) \<lparr>sl = 1, txs = 0, pred = H 0 0, bid = 0\<rparr>"
+
+lemma AllExtend : "extendTreeGen t b \<noteq> t \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
 proof(induction t)
-  case Leaf
-  then show ?case by simp
-next
   case (GenesisNode x1 t1 t2) note ABC=this
   then show ?case proof (cases "t1") 
     case Leaf note t1Leaf=this
@@ -120,10 +112,6 @@ next
       case Leaf
       then show ?thesis using ABC t1Leaf
         by auto   
-    next
-      case (GenesisNode x21 x22 x23)
-      then show ?thesis using ABC t1Leaf
-        by auto
     next
       case (Node x31 x32 x33)
       then show ?thesis using ABC t1Leaf
@@ -156,50 +144,6 @@ next
       case (Node x31 x32 x33)
       then show ?thesis using ABC Node1 by fastforce
     qed 
-  qed 
-next
-  case (Node x1 t1 t2) note NodeA = this
-  then show ?case proof(cases "t1")
-    case Leaf note t2Leaf=this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using NodeA t2Leaf
-        by auto
-    next
-      case (GenesisNode x21 x22 x23)
-      then show ?thesis  using NodeA t2Leaf
-        by auto
-    next
-      case (Node x31 x32 x33)
-      then show ?thesis  using NodeA t2Leaf
-        by auto
-    qed
-  next
-    case (GenesisNode x21 x22 x23) note t2GenNodeA = this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using NodeA t2GenNodeA
-        by auto
-    next
-      case (GenesisNode x21 x22 x23)
-      then show ?thesis  using NodeA t2GenNodeA  by fastforce
-    next
-      case (Node x31 x32 x33)
-      then show ?thesis using NodeA t2GenNodeA  by fastforce
-    qed
-  next
-    case (Node x31 x32 x33) note t2NodeA = this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using NodeA t2NodeA by auto
-    next
-      case (GenesisNode x21 x22 x23)
-      then show ?thesis using NodeA t2NodeA 
-        by fastforce
-    next
-      case (Node x31 x32 x33)
-      then show ?thesis using NodeA t2NodeA by fastforce
-    qed
   qed 
 qed
 

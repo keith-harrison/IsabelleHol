@@ -89,22 +89,23 @@ value "allBlocks' exampleTree"
 fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (Node Bl1 Leaf Leaf) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) Leaf) else (Node Bl1 Leaf Leaf)) "|
 "extendTree (Node Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 t1 (Node Bl2 Leaf Leaf)) else (Node Bl1 (extendTree t1 Bl2) Leaf))"|
-"extendTree (Node Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) t1) else (Node Bl1 Leaf (extendTree t1 Bl2)))"|
+"extendTree (Node Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) t1) else (Node Bl1  Leaf (extendTree t1 Bl2)))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree Leaf Bl2 = Leaf"
 
 fun extendTreeGen :: "GenT \<Rightarrow> Block \<Rightarrow> GenT" where
-"extendTreeGen (GenesisNode Bl1 Leaf Leaf) Bl2 = (if valid_blocks Bl2 Bl1 then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
+"extendTreeGen (GenesisNode Bl1 Leaf Leaf) Bl2 = (if (valid_blocks Bl2 Bl1) then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
 "extendTreeGen (GenesisNode Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1  then (GenesisNode Bl1 t1 (Node Bl2 Leaf Leaf)) else (GenesisNode Bl1 (extendTree t1 Bl2) Leaf))"|
-"extendTreeGen (GenesisNode Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) t1) else (GenesisNode Bl1 Leaf (extendTree t1 Bl2)))"|
+"extendTreeGen (GenesisNode Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) t1) else (GenesisNode Bl1  Leaf (extendTree t1 Bl2)))"|
 "extendTreeGen (GenesisNode Bl1 t1 t2) Bl2 = (GenesisNode Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"
+
 lemma "extendTree Leaf B = Leaf"
   by simp
 
 definition valid_t where
 "valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
 
-lemma AllExtend : "(extendTreeGen t b) \<noteq> t  \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
+lemma AllExtend : "extendTreeGen t b \<noteq> t  \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
 proof(induction t)
   case (GenesisNode x1a x2a x3a) note Gen = this
   then show ?case proof (cases "x2a")
