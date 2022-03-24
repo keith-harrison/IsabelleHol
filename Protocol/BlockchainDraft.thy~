@@ -89,7 +89,7 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTree (Node Bl1 Leaf t1) Bl2 =  (if valid_blocks Bl2 Bl1 then (Node Bl1 (Node Bl2 Leaf Leaf) t1) else (Node Bl1  Leaf (extendTree t1 Bl2)))"|
 "extendTree (Node Bl1 t1 t2) Bl2 =(Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2))"|
 "extendTree Leaf Bl2 = Leaf"
-(*valid_chain ([Bl2] @ Bl1) <- will also check for gen node only use in extendTreeGen*)
+
 fun extendTreeGen :: "GenT \<Rightarrow> Block \<Rightarrow> GenT" where
 "extendTreeGen (GenesisNode Bl1 Leaf Leaf) Bl2 = (if (valid_blocks Bl2 Bl1) then (GenesisNode Bl1 (Node Bl2 Leaf Leaf) Leaf) else (GenesisNode Bl1 Leaf Leaf)) "|
 "extendTreeGen (GenesisNode Bl1 t1 Leaf) Bl2 =  (if valid_blocks Bl2 Bl1  then (GenesisNode Bl1 t1 (Node Bl2 Leaf Leaf)) else (GenesisNode Bl1 (extendTree t1 Bl2) Leaf))"|
@@ -99,66 +99,11 @@ fun extendTreeGen :: "GenT \<Rightarrow> Block \<Rightarrow> GenT" where
 lemma "extendTree Leaf B = Leaf"
   by simp
 
-lemma AllExtend' : "(t \<noteq> Leaf \<and>extendTree t b \<noteq>t) \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
-proof(induction "t")
-  case Leaf
-  then show ?case try
-    by simp
-next
-  case (Node x1 t1 t2) note Node = this
-  then show ?case proof(cases "t1")
-    case Leaf note t1Leaf = this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using Node t1Leaf  by auto
-    next
-      case (Node x21 x22 x23)
-      then show ?thesis using Node t1Leaf sorry
-    qed
-  next
-    case (Node x21 x22 x23) note t2Node = this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using Node t2Node sorry
-    next
-      case (Node x21 x22 x23)
-      then show ?thesis using Node t2Node sorry
-    qed
-  qed
-qed
+
 
 value "extendTreeGen (GenesisNode \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> T.Leaf T.Leaf)) \<lparr>sl = 1, txs = 0, pred = H 0 0, bid = 0\<rparr>"
-lemma AllExtend : assumes "extendTreeGen t b \<noteq> t" shows "set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
-proof(cases "t")
-  case (GenesisNode x1 x2 x3) note GenNode = this
-  then show ?thesis proof(cases "x2") 
-    case Leaf note x2Leaf = this
-    then show ?thesis proof(cases "x3")
-      case Leaf
-      then show ?thesis using assms GenNode x2Leaf by auto
-    next
-      case (Node x21 x22 x23) note x3Node = this
-      then show ?thesis using assms GenNode x2Leaf proof(cases "valid_blocks b x1")
-        case True
-        then show ?thesis  using assms GenNode x2Leaf x3Node try
-          by simp
-      next
-        case False
-        then show ?thesis  using assms GenNode x2Leaf x3Node apply code_simp try
-      qed
-    qed
-  next
-    case (Node x21 x22 x23)
-    then show ?thesis proof(cases "x3")
-      case Leaf
-      then show ?thesis sorry
-    next
-      case (Node x21 x22 x23)
-      then show ?thesis sorry
-    qed
-  qed
 
-(*
+lemma AllExtend : "extendTreeGen t b \<noteq> t \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
 proof(induction t)
   case (GenesisNode x1 t1 t2) note ABC=this
   then show ?case proof (cases "t1") 
@@ -201,7 +146,7 @@ proof(induction t)
     qed 
   qed 
 qed
-*)
+
 (*Only extends if the parents block [sl,bid] is equal to childs pred list *)
 value "extendTree (GenesisNode GenBlock Leaf Leaf) Block1 "
 value "extendTree (GenesisNode GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> Leaf Leaf) (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf)) \<lparr>sl = 0, txs = 0, pred =H 1 2, bid = 1\<rparr> "
