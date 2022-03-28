@@ -140,11 +140,11 @@ proof(cases "t")
       case (Node x21 x22 x23) note x3Node = this
       then show ?thesis using assms GenNode x2Leaf proof(cases "valid_blocks b x1")
         case True
-        then show ?thesis  using assms GenNode x2Leaf x3Node try
+        then show ?thesis  using assms GenNode x2Leaf x3Node
           by simp
       next
         case False
-        then show ?thesis  using assms GenNode x2Leaf x3Node apply code_simp try
+        then show ?thesis  using assms GenNode x2Leaf x3Node apply code_simp by auto
       qed
     qed
   next
