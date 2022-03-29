@@ -28,22 +28,33 @@ type_synonym BlockPool = "Block list"
 
 
 
-fun HashCompare :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
-"HashCompare (H a b) bl1 = (if ((a = sl bl1) \<and> (b = bid bl1)) then True else False)"
+fun HashCompare' :: "Hash \<Rightarrow> Block \<Rightarrow> bool" where
+"HashCompare' (H a b) bl1 = ((a = sl bl1) \<and> (b = bid bl1))"
 
-fun HashB :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
-"HashB bl1 bl2 = HashCompare (pred bl2) bl1"
+
+fun HashCompare :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
+"HashCompare bl1 bl2 = HashCompare' (pred bl2) bl1"
 
 definition "GenBlock = \<lparr>sl = 0, txs = 0, pred = H 0 0 ,bid = 0\<rparr>"
 definition "Block1 = \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>"
+definition "Block2 = \<lparr> sl = 2, txs = 0, pred = H 1 1, bid = 1\<rparr>"
+definition "Block3 = \<lparr> sl = 3, txs = 0, pred = H 2 1, bid = 1\<rparr>"
 
-value "HashB GenBlock Block1"
+value "HashCompare GenBlock Block1"
+value "HashCompare Block1 Block2"
+value "HashCompare Block2 Block3"
+value "HashCompare GenBlock Block2"
+value "HashCompare Block2 Block1"
+value "HashCompare Block1 GenBlock"
 
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
-"valid_blocks b1 b2 =  (HashB b2 b1 \<and> (sl b2 < sl b1)) "
+"valid_blocks b1 b2 =  (HashCompare b2 b1 \<and> (sl b2 < sl b1)) "
 
 value "valid_blocks Block1 GenBlock"
-value "a#b#[c,d]"
+value "valid_blocks Block2 Block1"
+value "valid_blocks Block3 Block2"
+value "valid_blocks Block2 Block3"
+value "b#[c]"
 
 (*checking for b's being a node only and a /genesis node at the end of the list missing*)
 fun valid_chain :: "Chain \<Rightarrow> bool" where
@@ -51,9 +62,9 @@ fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
 
-
+value "valid_chain [Block3,Block2,Block1,GenBlock]"
 value "valid_chain [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
-value "HashB  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
+value "HashCompare  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
 
 
  
@@ -96,13 +107,15 @@ fun extendTreeGen :: "T \<Rightarrow> Block \<Rightarrow> T" where
 "extendTreeGen (Node Bl1 t1 Leaf) Bl2 =  (if valid_chain (Bl2#[Bl1])  then (Node Bl1 t1 (Node Bl2 Leaf Leaf)) else (if Bl1 = GenBlock then (Node Bl1 (extendTree t1 Bl2) Leaf) else (Node Bl1 t1 Leaf)))"|
 "extendTreeGen (Node Bl1 Leaf t1) Bl2 =  (if valid_chain (Bl2#[Bl1]) then (Node Bl1 (Node Bl2 Leaf Leaf) t1) else (if Bl1 = GenBlock then (Node Bl1  Leaf (extendTree t1 Bl2)) else (Node Bl1 Leaf t1)))"|
 "extendTreeGen (Node Bl1 t1 t2) Bl2 = (if Bl1 = GenBlock then (Node Bl1 (extendTree t1 Bl2) (extendTree t2 Bl2)) else (Node Bl1 t1 t2)) "|
-"extendTreeGen Leaf Bl2 = Leaf"
+"extendTreeGen Leaf Bl2 = Leaf "
+lemma "extendTreeGen Leaf B = Leaf"
+  by simp 
 
-lemma "extendTree Leaf B = Leaf"
-  by simp
+
+  
 
 value "(extendTreeGen tree0 Block1) = (Node GenBlock (Node Block1 Leaf Leaf)  Leaf)"
-value "extendTreeGen (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> T.Leaf (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))  \<lparr>sl = 1, txs = 0, pred = H 0 0, bid = 0\<rparr> "
+value "extendTreeGen (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf (T.Node \<lparr>sl = 1, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))  \<lparr>sl =1 , txs = 0, pred = H 0 0, bid = 0\<rparr> "
 value "valid_chain  (\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>#[\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr>])"
 lemma ExtendInitial : "(extendTreeGen tree0 Block1) = (Node GenBlock (Node Block1 Leaf Leaf) Leaf)"
   by (simp add: GenBlock_def tree0_def Block1_def)
@@ -142,8 +155,34 @@ next
   qed
 qed
 
-lemma GenExtend : "valid_t t\<and> (extendTreeGen t b \<noteq> t) \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
-proof(induction "t")
+lemma GenExtend : "t \<noteq> Leaf\<and>(extendTreeGen t b \<noteq> t)\<and>valid_t t \<Longrightarrow> set (allBlocksGen (extendTreeGen t b)) =set ([b]@ allBlocksGen t)"
+proof(cases "t")
+  case Leaf note Leaf = this
+  then show ?thesis sorry
+next
+  case (Node x1 t1 t2) note Nodex1 = this
+  then show ?thesis proof(cases "t1")
+    case Leaf note Leaft1 = this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using Nodex1 Leaft1 BaseExtend apply(auto) apply(simp add: GenBlock_def tree0_def Block1_def) sorry
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using Nodex1 Leaft1 BaseExtend apply(auto) apply(simp add: GenBlock_def tree0_def Block1_def) sorry
+    qed
+  next
+    case (Node x21 x22 x23) note Nodet1 = this
+    then show ?thesis proof(cases"t2")
+      case Leaf
+      then show ?thesis using Nodex1 Nodet1 BaseExtend apply(auto) apply(simp add: GenBlock_def tree0_def Block1_def) sorry
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using Nodex1 Nodet1 BaseExtend apply(auto) apply(simp add: GenBlock_def tree0_def Block1_def) sorry
+    qed 
+  qed
+qed
+
+(*proof(induction "t")
   case Leaf
   then show ?case 
     apply(simp)
@@ -163,9 +202,8 @@ next
     next
       case (Node x21 x22 x23)
       then show ?thesis using Nodex1 Leaft1
-        apply(simp add: Block1_def GenBlock_def tree0_def) 
-        apply(auto)
-        apply (metis GenBlock_def valid_chain.simps(2)) 
+        apply(simp add: Nodex1 Leaft1 Block1_def GenBlock_def tree0_def) 
+        sorry
     qed          
   next
     case (Node x21 x22 x23) note Nodet1 = this
@@ -173,8 +211,7 @@ next
       case Leaf
       then show ?thesis using Nodex1 Nodet1
         apply(simp add: Block1_def GenBlock_def tree0_def) 
-
-      sorry
+        sorry
     next
       case (Node x21 x22 x23)
       then show ?thesis using Nodex1 Nodet1 
@@ -185,4 +222,5 @@ next
     qed
   qed
 qed
+*)
 
