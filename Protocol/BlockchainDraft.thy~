@@ -102,8 +102,7 @@ lemma "extendTree Leaf B = Leaf"
 lemma AllExtend' : "(t \<noteq> Leaf \<and>extendTree t b \<noteq>t) \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(induction "t")
   case Leaf
-  then show ?case try
-    by simp
+  then show ?case   by simp
 next
   case (Node x1 t1 t2) note Node = this
   then show ?case proof(cases "t1")

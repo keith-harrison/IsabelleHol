@@ -206,3 +206,61 @@ next
   qed
 qed
 *)
+
+fun best_c :: "nat \<Rightarrow> Block list list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
+"best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
+
+definition get_first :: "(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list" where
+"get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
+
+lemma best_c_none : "best_c n [] = None"
+  by(simp)
+
+
+lemma find_in : \<open>find p ls = Some l\<Longrightarrow> l\<in> set(ls)\<close>
+proof(induction ls)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a ls)
+  then show ?case
+    by (metis find_Some_iff nth_mem)
+qed
+
+lemma best_c_in : "best_c n bl \<noteq> None \<Longrightarrow> get_first(best_c n bl) \<in> set(bl)"
+  apply(simp add:get_first_def find_in)
+proof(induction bl)
+  case Nil
+  then show ?case
+    by simp 
+next
+  case (Cons a bl)
+  then show ?case
+    by auto
+qed 
+
+fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Block list" where
+"best_chain s Leaf = []"|
+"best_chain 0 (Node x _ _) = []"|
+"best_chain s (Node x l r) = get_first ( best_c s (allBlocks' (Node x l r)))"
+
+value "best_c (3::nat) (allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
+
+value "allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
+
+value "valid_chain (best_chain 0 (Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf) Leaf)
+ (Node \<lparr>sl = 1, txs = 1, pred = H 1 1, bid = 1\<rparr> Leaf Leaf)))"
+
+value "best_chain 1 (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> Leaf Leaf)"
+value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
+(*do a Proof of uniqueness of trees / Proof of validity of best chain / Proof of best_chain being included in allblocks*)
+lemma best_valid :assumes"t\<noteq>Leaf\<and>s \<noteq> 0 \<and>valid_t t \<and> (allBlocks' t \<noteq>[[]])" shows "valid_chain (best_chain s t)"
+proof(cases "t")
+  case Leaf
+  then show ?thesis using assms by auto
+next
+  case (Node x21 x22 x23)
+  then show ?thesis using assms apply(simp add:GenBlock_def get_first_def) apply(auto) try
+qed
