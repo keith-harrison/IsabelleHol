@@ -117,8 +117,6 @@ lemma "extendTree Leaf B = Leaf"
   by simp 
 
 
-  
-
 value "(extendTree tree0 Block1) = (Node GenBlock (Node Block1 Leaf Leaf)  Leaf)"
 value "extendTree (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf (T.Node \<lparr>sl = 1, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))  \<lparr>sl =1 , txs = 0, pred = H 0 0, bid = 0\<rparr> "
 value "valid_chain  (\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>#[\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr>])"
@@ -163,7 +161,7 @@ qed
 lemma GenExtend : assumes "(extendTree t b \<noteq> t)\<and>valid_t t" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(cases "t")
   case Leaf note LeafCase = this
-  then show ?thesis using assms LeafCase try
+  then show ?thesis using assms LeafCase
     by simp
 next
   case (Node x1 t1 t2)
@@ -177,35 +175,7 @@ next
       by simp
   qed
 qed
-(*
-proof(cases "t")
-  case Leaf note Leaf = this
-  then show ?thesis
-    using assms extendTree.simps(6) by blast
-next
-  case (Node x1 t1 t2) note Nodex1 = this
-  then show ?thesis proof(cases "t1")
-    case Leaf note Leaft1 = this
-    then show ?thesis proof(cases "t2")
-      case Leaf
-      then show ?thesis using assms Nodex1 Leaft1 BaseExtend
-        by auto
-    next
-      case (Node x21 x22 x23)
-      then show ?thesis using Nodex1 Leaft1 BaseExtend assms apply(auto) done
-    qed
-  next
-    case (Node x21 x22 x23) note Nodet1 = this
-    then show ?thesis proof(cases"t2")
-      case Leaf
-      then show ?thesis using Nodex1 Nodet1 BaseExtend assms apply(auto) done
-    next
-      case (Node x21 x22 x23)
-      then show ?thesis using Nodex1 Nodet1 BaseExtend assms apply(auto) done
-    qed 
-  qed
-qed
-*)
+
 
 fun best_c :: "nat \<Rightarrow> Block list list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
@@ -255,12 +225,38 @@ value "valid_chain (best_chain 0 (Node GenBlock (Node \<lparr>sl = 1, txs = 1, p
 
 value "best_chain 1 (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> Leaf Leaf)"
 value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
+(* add inner case statements to lower lemma *)
+(*if datatype is modelled to ensure gennode at the start vs having a simpler model with assumptions*)
 (*do a Proof of uniqueness of trees / Proof of validity of best chain / Proof of best_chain being included in allblocks*)
+(*do another lemma*)
+(*Haskell Testing - Daniel*)
+(*Isabelle exports to a subset of cases of haskell \<rightarrow> only uses prelude of haskell avoids mapping to more complex datatypes to avoid/minimise risk of verifying unreliable behaviour due to different underlying semantics*)
+(*type errors can be solved by interfacing with test harness easier by commenting out errors - manual modification / try to avoid / would require configuration of code generator otherwise*)
+(*case finite induction infinite states to prove properties*)
+(*we want to prove interesting properties but the more complex the properties the more time taken ~ reword*)
+(*talk about different proof schemes , cases, induction and the application of proof solvers: apply simp for instance*)
 lemma best_valid :assumes"t\<noteq>Leaf\<and>s \<noteq> 0 \<and>valid_t t \<and> (allBlocks' t \<noteq>[[]])" shows "valid_chain (best_chain s t)"
 proof(cases "t")
   case Leaf
   then show ?thesis using assms by auto
 next
-  case (Node x21 x22 x23)
-  then show ?thesis using assms apply(simp add:GenBlock_def get_first_def) apply(auto) try
-qed
+  case (Node x1 x2 x3) note nodet = this
+  then show ?thesis proof(cases "x2")
+    case Leaf note x2leaf = this
+    then show ?thesis proof(cases "x3")
+      case Leaf
+      then show ?thesis  using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) try
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) sorry
+    qed
+  next
+    case (Node x21 x22 x23) note x2node = this
+    then show ?thesis proof(cases "x3")
+      case Leaf
+      then show ?thesis using assms nodet x2node apply(simp add:GenBlock_def valid_t_def) sorry
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using assms nodet x2node apply(simp add:GenBlock_def valid_t_def) sorry 
+    qed
+  qed
