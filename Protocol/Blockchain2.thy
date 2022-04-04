@@ -235,17 +235,19 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 (*case finite induction infinite states to prove properties*)
 (*we want to prove interesting properties but the more complex the properties the more time taken ~ reword*)
 (*talk about different proof schemes , cases, induction and the application of proof solvers: apply simp for instance*)
-lemma best_valid :assumes"t\<noteq>Leaf\<and>s \<noteq> 0 \<and>valid_t t \<and> (allBlocks' t \<noteq>[[]])" shows "valid_chain (best_chain s t)"
+value "valid_chain (best_chain 1 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
+lemma best_valid :assumes"t\<noteq>Leaf\<and>s > 0 \<and>valid_t t" shows "valid_chain (best_chain s t)"
 proof(cases "t")
   case Leaf
-  then show ?thesis using assms by auto
+  then show ?thesis using assms
+    by simp
 next
   case (Node x1 x2 x3) note nodet = this
   then show ?thesis proof(cases "x2")
     case Leaf note x2leaf = this
     then show ?thesis proof(cases "x3")
       case Leaf
-      then show ?thesis  using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) try
+      then show ?thesis  using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) apply(auto) try
     next
       case (Node x21 x22 x23)
       then show ?thesis using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) sorry
