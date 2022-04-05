@@ -62,6 +62,11 @@ fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
 
+fun valid_chain_weak :: "Chain \<Rightarrow> bool" where 
+"valid_chain_weak [] = False"|
+"valid_chain_weak [b1] = True"|
+"valid_chain_weak (b1#b2#c) = (if valid_blocks b1 b2 then valid_chain_weak (b2#c) else False)"
+
 value "valid_chain [Block3,Block2,Block1,GenBlock]"
 value "valid_chain [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
 value "HashCompare  \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 2\<rparr>"
@@ -118,6 +123,9 @@ lemma ExtendInitial : "(extendTree tree0 Block1) = (Node GenBlock (Node Block1 L
 
 definition valid_t where
 "valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
+
+definition valid_t_weak where
+"valid_t_weak t = (\<forall>c \<in> set(allBlocks' t).valid_chain_weak c)"
 
 lemma BaseExtend : "(extendTree t b \<noteq> t) \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(induction "t")
@@ -227,73 +235,76 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 
 value "valid_chain (best_chain 1 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
 
+  
+
+
 lemma base_best_valid:assumes "s>0" shows "(valid_chain(best_chain s tree0) = True)"
   using assms apply(simp add: GenBlock_def best_c_in tree0_def) done
 
-lemma best_valid :assumes"t\<noteq>Leaf\<and>(s >0) \<and>valid_t t" shows "valid_chain (best_chain s t)"
+lemma best_valid_weak:assumes"s\<ge>0\<and>valid_t t" shows "valid_chain_weak(best_chain s t)"
 proof(cases "t")
   case Leaf
-  then show ?thesis using assms
-    by simp
+  then show ?thesis using assms apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def valid_t_weak_def) done
 next
-  case (Node x21 x22 x23) note Nodet = this
-  then show ?thesis proof(cases "x22")
-    case Leaf note Leafx22 = this
-    then show ?thesis proof(cases"x23")
+  case (Node t1 t2 t3) note tNode = this
+  then show ?thesis proof(induction "t2")
+    case Leaf
+    then show ?case proof(induction "t3")
       case Leaf
-      then show ?thesis using assms Nodet Leafx22 apply(simp add:GenBlock_def valid_t_def base_best_valid) apply(auto) apply(metis) done
-    next
-      case (Node x211 x221 x231)
-      then show ?thesis using assms Nodet Leafx22 apply(simp add:GenBlock_def valid_t_def base_best_valid) apply(auto)  done
+      then show ?case using assms apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def valid_t_weak_def) by metis
+      next
+      case (Node x1 x2 x3)
+      then show ?case using assms apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def valid_t_weak_def) by metis
     qed
   next
-    case (Node x211 x221 x231) note Nodex22 = this
-    then show ?thesis proof(cases"x23")
-      case Leaf note Leafx23 = this
-      then show ?thesis  proof(cases"rec_list Map.empty (\<lambda>x xs xsa P. if P x then Some x else xsa P)
-               (map (\<lambda>l. (l, Record.iso_tuple_fst Record.tuple_iso_tuple
-                              (Record.iso_tuple_fst Record.tuple_iso_tuple (Record.iso_tuple_fst Block_ext_Tuple_Iso (case l of x21 # x22 \<Rightarrow> x21))),
-                          valid_chain l))
-                 (rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys)
-                   (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x21])
-                     (rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x211]) (allBlocks' x221))
-                       (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x211]) (allBlocks' x231))))
-                   [[x21]]))
-               (\<lambda>(c, sa, v). v \<and> sa \<le> s) = None")
+    case (Node x1 x2 x3) note t2Node = this
+    then show ?case proof(induction "t3")
+      case Leaf note t3Leaf = this
+      then show ?case using tNode t2Node t3Leaf assms apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def valid_t_weak_def) sorry
+    next
+      case (Node y1 y2 y3)
+      then show ?case sorry
+    qed
+  qed 
+qed
+
+
+
+lemma best_valid :assumes"(s >0) \<and>valid_t t" shows "valid_chain (best_chain s t)"
+proof(cases "t")
+  case Leaf
+  then show ?thesis using assms apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def sl_def hd_def find_def Let_def o_def fst_def) done
+next
+  case (Node x21 x22 x23) note Nodet = this
+  then show ?thesis proof(induction "x22")
+    case Leaf note leafx22 = this
+    then show ?case proof(cases "x23")
+      case Leaf note leafx23 = this
+      then show ?thesis using assms Nodet leafx23 leafx22 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def Let_def o_def fst_def) apply(auto) by metis
+    next
+      case (Node x230 x231 x232) note nodex23=this
+      then show ?thesis using assms Nodet leafx22 nodex23 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def Let_def o_def fst_def) apply(auto) done
+    qed
+  next
+    case (Node x1 x221 x222) note nodex22 = this
+    then show ?case proof(cases "x23")
+      case Leaf note leafx23 = this
+      then show ?thesis proof (cases "find (\<lambda>(c, sa, v). v \<and> sa \<le> s)
+            (map ((\<lambda>x. (x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>], sl (case x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>] of x21 # x22 \<Rightarrow> x21), valid_chain (x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]))) \<circ> (\<lambda>bl. bl @ [x1]))
+              (allBlocks' x221) @
+             map ((\<lambda>x. (x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>], sl (case x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>] of x21 # x22 \<Rightarrow> x21), valid_chain (x @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]))) \<circ> (\<lambda>bl. bl @ [x1]))
+              (allBlocks' x222) @
+             [([\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>], 0, True)]) =
+      None ")
         case True
-        then show ?thesis using assms Nodet Nodex22 Leafx23
-       apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def map_def append_def sl_def hd_def set_def find_def Let_def o_def fst_def) apply(auto)
-          sorry
+        then show ?thesis using assms Nodet nodex22 leafx23 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def Let_def o_def hd_def) apply(auto) sorry
       next
         case False
-        then show ?thesis using assms Nodet Nodex22 Leafx23
-          apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def map_def append_def sl_def hd_def set_def find_def Let_def o_def fst_def) apply(auto)
-          sorry
+        then show ?thesis using assms Nodet nodex22 leafx23 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def Let_def o_def hd_def) apply(auto) sorry
       qed
     next
-      case (Node x212 x222 x232) note Nodex23 = this
-      then show ?thesis proof(cases"rec_list Map.empty (\<lambda>x xs xsa P. if P x then Some x else xsa P)
-            (map (\<lambda>l. (l, Record.iso_tuple_fst Record.tuple_iso_tuple
-                           (Record.iso_tuple_fst Record.tuple_iso_tuple (Record.iso_tuple_fst Block_ext_Tuple_Iso (case l of x21 # x22 \<Rightarrow> x21))),
-                       valid_chain l))
-              (rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys)
-                (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x21])
-                  (rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x211]) (allBlocks' x221))
-                    (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x211]) (allBlocks' x231))))
-                (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x21])
-                  (rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x212]) (allBlocks' x222))
-                    (map (\<lambda>bl. rec_list (\<lambda>ys. ys) (\<lambda>x xs xsa ys. x # xsa ys) bl [x212]) (allBlocks' x232))))))
-            (\<lambda>(c, sa, v). v \<and> sa \<le> s) =
-      None")
-        case True
-        then show ?thesis using assms Nodet Nodex22 Nodex23 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def map_def append_def sl_def hd_def set_def find_def Let_def o_def fst_def) apply(auto) sorry
-
-      next
-        case False
-        then show ?thesis using assms Nodet Nodex22 Nodex23 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def map_def append_def sl_def hd_def set_def find_def Let_def o_def fst_def) apply(auto) sorry
-
-      qed
-      
-      qed
+      case (Node x230 x231 x232) note nodex23 = this
+      then show ?thesis using assms Nodet nodex23 nodex22 apply(simp add:GenBlock_def valid_t_def base_best_valid best_c_in tree0_def Let_def o_def) sorry
+    qed
   qed
 qed
