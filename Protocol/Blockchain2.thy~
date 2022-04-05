@@ -165,13 +165,13 @@ proof(cases "t")
     by simp
 next
   case (Node x1 t1 t2)
-  then show ?thesis proof(induction "t1")
+  then show ?thesis proof(cases "t1")
     case Leaf
-    then show ?case using assms BaseExtend 
+    then show ?thesis using assms BaseExtend 
       by simp
   next
     case (Node x1 t11 t12)
-    then show ?case using assms BaseExtend
+    then show ?thesis using assms BaseExtend
       by simp
   qed
 qed
@@ -225,21 +225,31 @@ value "valid_chain (best_chain 0 (Node GenBlock (Node \<lparr>sl = 1, txs = 1, p
 
 value "best_chain 1 (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> Leaf Leaf)"
 value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> Leaf Leaf)"
-(* add inner case statements to lower lemma *)
-(*if datatype is modelled to ensure gennode at the start vs having a simpler model with assumptions*)
-(*do a Proof of uniqueness of trees / Proof of validity of best chain / Proof of best_chain being included in allblocks*)
-(*do another lemma*)
-(*Haskell Testing - Daniel*)
-(*Isabelle exports to a subset of cases of haskell \<rightarrow> only uses prelude of haskell avoids mapping to more complex datatypes to avoid/minimise risk of verifying unreliable behaviour due to different underlying semantics*)
-(*type errors can be solved by interfacing with test harness easier by commenting out errors - manual modification / try to avoid / would require configuration of code generator otherwise*)
-(*case finite induction infinite states to prove properties*)
-(*we want to prove interesting properties but the more complex the properties the more time taken ~ reword*)
-(*talk about different proof schemes , cases, induction and the application of proof solvers: apply simp for instance*)
-lemma best_valid :assumes"t\<noteq>Leaf\<and>s \<noteq> 0 \<and>valid_t t \<and> (allBlocks' t \<noteq>[[]])" shows "valid_chain (best_chain s t)"
+
+value "valid_chain (best_chain 1 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
+lemma best_valid :assumes"t\<noteq>Leaf\<and>s > 0 \<and>valid_t t" shows "valid_chain (best_chain s t)"
 proof(cases "t")
   case Leaf
-  then show ?thesis using assms by auto
+  then show ?thesis using assms
+    by simp
 next
-  case (Node x21 x22 x23)
-  then show ?thesis using assms apply(simp add:GenBlock_def get_first_def) apply(auto) oops
-qed
+  case (Node x1 x2 x3) note nodet = this
+  then show ?thesis proof(cases "x2")
+    case Leaf note x2leaf = this
+    then show ?thesis proof(cases "x3")
+      case Leaf
+      then show ?thesis  using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) apply(auto) try
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using assms nodet x2leaf apply(simp add:GenBlock_def valid_t_def) sorry
+    qed
+  next
+    case (Node x21 x22 x23) note x2node = this
+    then show ?thesis proof(cases "x3")
+      case Leaf
+      then show ?thesis using assms nodet x2node apply(simp add:GenBlock_def valid_t_def) sorry
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using assms nodet x2node apply(simp add:GenBlock_def valid_t_def) sorry 
+    qed
+  qed
