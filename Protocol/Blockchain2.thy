@@ -278,7 +278,8 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 
 value "valid_chain (best_chain 4 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
 
-  
+export_code HashCompare' HashCompare GenBlock Block1 Block2 Block3 valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain  in Haskell  
+
 
 
 lemma base_best_valid:assumes "s\<ge>0" shows "(valid_chain(best_chain s tree0) = True)"
