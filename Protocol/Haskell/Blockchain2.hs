@@ -6,6 +6,7 @@ module
                allBlocksAppend, allBlocksa, valid_t, allBlocks, get_first,
                best_chain, extendTree, valid_chain_weak, valid_t_weak)
   where {
+import QuickCheck (quickCheck)
 
 import Prelude ((==), (/=), (<), (<=), (>=), (>), (+), (-), (*), (/), (**),
   (>>=), (>>), (=<<), (&&), (||), (^), (^^), (.), ($), ($!), (++), (!!), Eq,
