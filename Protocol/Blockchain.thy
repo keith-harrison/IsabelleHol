@@ -67,7 +67,7 @@ fun allBlocksAppend :: "Block \<Rightarrow>BlockPool list\<Rightarrow> BlockPool
 "allBlocksAppend Bl BlP = (map (\<lambda> bl. bl @ [Bl]) BlP)"
 
 fun allBlocks' :: "T \<Rightarrow> BlockPool list" where
-"allBlocks' (Node m l r) = allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r)"|
+"allBlocks' (Node m l r) =( allBlocksAppend m (allBlocks' l) @allBlocksAppend m (allBlocks' r))"|
 "allBlocks' Leaf = [[]]"
 
 fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
@@ -90,12 +90,17 @@ fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<tim
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list 
   in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
+
 fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Block list" where
 "get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
+
+
 
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "best_chain s Leaf = []"|
 "best_chain s (Node x l r) = (if s > 0 then get_first ( best_c s (allBlocks' (Node x l r)))else [GenBlock])"
+value "( best_c s (allBlocks' (Node x l r)))"
+
 
 fun block_eq :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "block_eq b1 b2 = (b1 =b2)"
@@ -240,7 +245,7 @@ next
   qed
 qed
 
-lemma GenExtend : assumes "(extendTree t b \<noteq> t)\<and>valid_t t" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+lemma GenExtend : assumes a1:"(extendTree t b \<noteq> t)\<and>valid_t t" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(cases "t")
   case Leaf note LeafCase = this
   then show ?thesis using assms LeafCase
@@ -284,41 +289,49 @@ next
   then show ?case
     by auto
 qed 
-(*
-lemma base_best_valid:"(valid_chain(best_chain s tree0) = True)"
-proof(induction "s")
-  case 0
-  then show ?case  apply(simp add: GenBlock_def best_c_in tree0_def) done
-next
-  case (Suc s)
-  then show ?case   apply(simp add: GenBlock_def best_c_in tree0_def) done
-qed
-*)
 
-lemma best_valid :assumes"valid_t t" shows "valid_chain (best_chain s t)"
-proof(cases "t")
+
+lemma best_valid :assumes"valid_t t" and
+  a2: "valid_chain
+      (case find (\<lambda>(c, sa, v). v \<and> sa \<le> s)
+             (map ((\<lambda>l. (l, sl (hd l), valid_chain l)) \<circ> ((\<lambda>bl. bl @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]) \<circ> (\<lambda>bl. bl @ [x21]))) (allBlocks' x22) @
+              map ((\<lambda>l. (l, sl (hd l), valid_chain l)) \<circ> ((\<lambda>bl. bl @ [\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]) \<circ> (\<lambda>bl. bl @ [x21]))) (allBlocks' x23) @
+              [([\<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>], 0, True)]) of
+       None \<Rightarrow> [] | Some x \<Rightarrow> fst x)= True"
+and
+  a3: "(\<And>p ls l. find p ls = Some l \<Longrightarrow> l \<in> set ls) \<Longrightarrow>
+    (\<And>n bl.
+        \<exists>a aa b. find (\<lambda>(c, s, v). v \<and> s \<le> n) (map (\<lambda>l. (l, sl (hd l), valid_chain l)) bl) = Some (a, aa, b) \<Longrightarrow>
+        (case find (\<lambda>(c, s, v). v \<and> s \<le> n) (map (\<lambda>l. (l, sl (hd l), valid_chain l)) bl) of None \<Rightarrow> [] | Some x \<Rightarrow> fst x) \<in> set bl) \<Longrightarrow>
+    \<forall>x\<in>(\<lambda>x. x @ [x21, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]) ` set (allBlocks' x22) \<union> (\<lambda>x. x @ [x21, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]) ` set (allBlocks' x23). valid_chain x \<Longrightarrow>
+    x1 = \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> \<Longrightarrow>
+    0 < s"
+
+shows "valid_chain (best_chain s t)"
+proof(cases "t") 
   case Leaf
-  then show ?thesis using assms
-    by simp
+  then show ?thesis using assms valid_t_def apply(simp add: GenBlock_def best_c_in tree0_def valid_t_def) done
 next
-  case (Node x21 x22 x23) note nodex21 = this
-  then show ?thesis proof(cases "x22")
-    case Leaf note leafx22 = this
-    then show ?thesis proof(cases "x23")
-      case Leaf note leafx23 =this
-      show ?thesis using assms leafx23 leafx22 nodex21 apply(simp add: GenBlock_def best_c_in tree0_def) try
+  case (Node x1 x2 x3) note nodex1 = this
+  then show ?thesis proof(cases "x2")
+    case Leaf note leafx2 = this
+    then show ?thesis proof(cases "x3")
+      case Leaf note leafx3 =this
+      show ?thesis using assms leafx3 leafx2 nodex1 apply(simp add: GenBlock_def best_c_in tree0_def valid_t_def)
+        by auto 
     next
-      case (Node x21 x22 x23) note nodex23 =this
-      then show ?thesis using "x21 = GenBlock" assms leafx22 nodex23 nodex21 apply(simp add: GenBlock_def best_c_in)
+      case (Node x21 x22 x23) note nodex3 =this
+      then show ?thesis using  assms leafx2 nodex3 nodex1 find_in best_c_in best_c_none apply(simp add: GenBlock_def best_c_in tree0_def valid_t_def) apply(auto) done
     qed
   next
-    case (Node x21a x22a x23a) note nodex22 = this
-    then show ?thesis proof(cases "x23")
-      case Leaf
-      then show ?thesis sorry
+    case (Node x21 x22 x23) note nodex2 = this
+    then show ?thesis proof(cases "x3")
+      case Leaf note leafx3 =this
+      then show ?thesis using assms leafx3  nodex2 nodex1 find_in best_c_in best_c_none apply(simp add: GenBlock_def tree0_def valid_t_def find_def) apply(auto) sorry
     next
-      case (Node x21 x22 x23)
-      then show ?thesis sorry
+      case (Node x31 x32 x33) note nodex3=this
+      then show ?thesis using assms nodex3 nodex2 nodex1 find_in best_c_in best_c_none apply(simp add: GenBlock_def tree0_def valid_t_def find_def) apply(auto) sorry
     qed
   qed
 qed
+
