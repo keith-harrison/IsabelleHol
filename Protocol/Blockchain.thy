@@ -3,10 +3,10 @@ theory Blockchain
 begin
 
 (* -- TYPES / Hash / Block Datatype / BlockTree Datatype --*)
-type_synonym Transactions = nat
-type_synonym Party = nat
-type_synonym Slot = nat
-datatype Hash = H nat nat
+type_synonym Transactions = int
+type_synonym Party = int
+type_synonym Slot = int
+datatype Hash = H int int
 definition "Slotzero = 0"
 type_synonym Parties = "Party list"
  
@@ -86,17 +86,28 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 
 (*-- Functions for finding best_chain --*)
 
-fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
+fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> int \<times> bool) option"where 
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list 
   in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
-fun get_first :: "(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list" where
+fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Block list" where
 "get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
 
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "best_chain s Leaf = []"|
-"best_chain 0 (Node x l r) = [GenBlock]"|
-"best_chain s (Node x l r) = get_first ( best_c s (allBlocks' (Node x l r)))"
+"best_chain s (Node x l r) = (if s > 0 then get_first ( best_c s (allBlocks' (Node x l r)))else [GenBlock])"
+
+fun block_eq :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
+"block_eq b1 b2 = (b1 =b2)"
+
+fun blockpool_eq :: "BlockPool \<Rightarrow> BlockPool \<Rightarrow> bool" where
+"blockpool_eq bpl1 bpl2 = (bpl1 =bpl2)"
+
+fun blocktree_eq :: "T \<Rightarrow> T \<Rightarrow> bool" where
+"blocktree_eq (Node t1 t2 t3) (Node t_1 t_2 t_3) =((block_eq t1 t_1) \<and> blocktree_eq t2 t_2 \<and> blocktree_eq t3 t_3)"|
+"blocktree_eq Leaf Leaf = True"|
+"blocktree_eq (Node t1 t2 t3) Leaf  =False"|
+"blocktree_eq Leaf (Node _ _ _)  =False"
 
 (* Unit Testing Code*)
 
@@ -139,7 +150,11 @@ value "valid_blocks Block2 Block1"
 value "valid_blocks Block3 Block2"
 value "valid_blocks Block2 Block3"
 value "b#[c]"
+definition valid_t where
+"valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
 
+definition valid_t_weak where
+"valid_t_weak t = (\<forall>c \<in> set(allBlocks' t).valid_chain_weak c)"
 value "valid_t test_tree_bad"
 
 value "valid_t test_tree_bad2"
@@ -156,13 +171,13 @@ value "valid_chain(best_chain 4 (extendTree test_tree extend_block))"
 
 value "valid_chain [\<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
 
-value "best_c (3::nat) (allBlocks'((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
+value "best_c (3::int) (allBlocks'((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf))) )"
 
 
 value "best_chain 10  ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf)))"
-value "best_c (3::nat) (allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
+value "best_c (3::int) (allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
 
 value "allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
@@ -177,16 +192,13 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 
 value "valid_chain (best_chain 4 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
 
-export_code HashCompare' HashCompare GenBlock Block1 Block2 Block3 valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain  in Haskell  
 
 (*-- LEMMAS + PROOFS -- *)
 
 
-fun valid_t where
-"valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
 
-fun valid_t_weak where
-"valid_t_weak t = (\<forall>c \<in> set(allBlocks' t).valid_chain_weak c)"
+
+export_code HashCompare' HashCompare GenBlock  blockpool_eq  block_eq valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain blocktree_eq  in Haskell  
 
 lemma initialTree : "allBlocks tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)

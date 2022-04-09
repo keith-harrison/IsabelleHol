@@ -1,10 +1,10 @@
 name:                Testing
 version:             0.1.0.0
-github:              "githubuser/Testing"
+github:              "keith_harrison/Testing"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2022 Author name here"
+author:              "Keith Harrison"
+maintainer:          "kh530@exeter.ac.uk"
+copyright:           "2022 keith harrison"
 
 extra-source-files:
 - README.md
@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
 - containers
+- generic-random
 library:
   source-dirs: src
 
