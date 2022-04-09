@@ -1,4 +1,4 @@
-theory Blockchain2
+theory Blockchain
   imports Main "HOL-Library.Tree"
 begin
 
