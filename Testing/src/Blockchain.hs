@@ -1,30 +1,56 @@
 {-# LANGUAGE EmptyDataDecls, RankNTypes, ScopedTypeVariables #-}
-
+{-# LANGUAGE TemplateHaskell,AllowAmbiguousTypes,BlockArguments, UndecidableInstances, DeriveDataTypeable, DeriveGeneric, StandaloneDeriving, DeriveAnyClass #-}
 module
   Blockchain(Hash, Block_ext, T, genBlock, tree0, hashComparea, hashCompare,
               valid_blocks, valid_chain, best_c, allBlocksAppend, allBlocksa,
               valid_t, block_eq, allBlocks, get_first, best_chain, extendTree,
-              blockpool_eq, blocktree_eq, valid_chain_weak, valid_t_weak)
+              blockpool_eq, blocktree_eq, valid_chain_weak, valid_t_weak,blockpool_eq_set)
   where {
 
 import Prelude ((==), (/=), (<), (<=), (>=), (>), (+), (-), (*), (/), (**),
   (>>=), (>>), (=<<), (&&), (||), (^), (^^), (.), ($), ($!), (++), (!!), Eq,
   error, id, return, not, fst, snd, map, filter, concat, concatMap, reverse,
-  zip, null, takeWhile, dropWhile, all, any, Integer, negate, abs, divMod,
+  zip, null, takeWhile, dropWhile, all, any, Integer, negate, abs, divMod,Int,div,Show,
   String, Bool(True, False), Maybe(Nothing, Just));
 import qualified Prelude;
 import qualified Option;
+import qualified Set;
 import qualified Product_Type;
 import qualified List;
 import qualified HOL;
 import qualified Arith;
+import GHC.Generics;
+import Data.Maybe;
+import Data.List;
+import Control.Exception;
+import Control.Monad;
+import Test.QuickCheck;
 
-data Hash = H Integer Integer;
+
+
+data Hash = H Integer Integer deriving(Show);
+
+instance Arbitrary (Hash) where{
+  arbitrary = do
+    Positive(sla) <- arbitrary;
+    Positive(bida) <- arbitrary;
+    return (H sla bida);
+};
 
 equal_Hash :: Hash -> Hash -> Bool;
 equal_Hash (H x1 x2) (H y1 y2) = Arith.equal_int x1 y1 && Arith.equal_int x2 y2;
 
-data Block_ext a = Block_ext Integer Integer Hash Integer a;
+data Block_ext a = Block_ext Integer Integer Hash Integer a deriving(Show);
+
+instance Arbitrary a => Arbitrary (Block_ext a) where{
+  arbitrary = do
+    Positive(sla) <- arbitrary;
+    Positive(txsa) <- arbitrary;
+    preda <- arbitrary;
+    Positive(bida) <- arbitrary;
+    morea <- arbitrary;
+    return (Block_ext sla txsa preda bida morea);
+};
 
 equal_Block_ext :: forall a. (Eq a) => Block_ext a -> Block_ext a -> Bool;
 equal_Block_ext (Block_ext sla txsa preda bida morea)
@@ -37,7 +63,16 @@ instance (Eq a) => Eq (Block_ext a) where {
   a == b = equal_Block_ext a b;
 };
 
-data T = Leaf | Node (Block_ext ()) T T;
+data T = Leaf | Node (Block_ext ()) T T deriving(Show);
+
+instance Arbitrary (T) where {
+arbitrary = sized arbTree;
+};
+
+arbTree :: Int -> Gen (T);
+arbTree 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
+arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)];};
+
 
 genBlock :: Block_ext ();
 genBlock =
@@ -71,6 +106,8 @@ valid_chain [b1] = (if equal_Block_ext b1 genBlock then True else False);
 valid_chain (b1 : b2 : c) =
   (if valid_blocks b1 b2 && not (equal_Block_ext b1 genBlock)
     then valid_chain (b2 : c) else False);
+blockpool_eq_set :: [Block_ext ()] -> [Block_ext ()] -> Bool;
+blockpool_eq_set bpl1 bpl2 = Set.equal_set (Set.Set bpl1) (Set.Set bpl2);
 
 best_c ::
   Integer -> [[Block_ext ()]] -> Maybe ([Block_ext ()], (Integer, Bool));

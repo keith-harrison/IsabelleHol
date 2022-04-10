@@ -99,14 +99,23 @@ fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Bl
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "best_chain s Leaf = []"|
 "best_chain s (Node x l r) = (if s > 0 then get_first ( best_c s (allBlocks' (Node x l r)))else [GenBlock])"
-value "( best_c s (allBlocks' (Node x l r)))"
-
 
 fun block_eq :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
-"block_eq b1 b2 = (b1 =b2)"
+"block_eq bl1 b2 = ((sl bl1 = sl b2)\<and>(txs bl1 = txs b2)\<and>(pred bl1 = pred b2)\<and>(bid bl1 = bid b2))"
+
+fun blockpool_eq_set :: "BlockPool \<Rightarrow> BlockPool \<Rightarrow> bool" where
+"blockpool_eq_set bpl1 bpl2 = (set(bpl1) = set(bpl2)) "
+
 
 fun blockpool_eq :: "BlockPool \<Rightarrow> BlockPool \<Rightarrow> bool" where
-"blockpool_eq bpl1 bpl2 = (bpl1 =bpl2)"
+"blockpool_eq (h1#t1) (h2#t2) = ((block_eq h1 h2) \<and> (blockpool_eq t1 t2))"|
+"blockpool_eq [] [] = True"| 
+"blockpool_eq [] (v # va) = False"|
+"blockpool_eq (v # va) [] = False"
+
+definition valid_t where
+"valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
+
 
 fun blocktree_eq :: "T \<Rightarrow> T \<Rightarrow> bool" where
 "blocktree_eq (Node t1 t2 t3) (Node t_1 t_2 t_3) =((block_eq t1 t_1) \<and> blocktree_eq t2 t_2 \<and> blocktree_eq t3 t_3)"|
@@ -197,13 +206,20 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 
 value "valid_chain (best_chain 4 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
 
+definition "testblock = \<lparr>sl = 1, txs = 1, pred = H 2 1, bid = 1 \<rparr>"
+definition "testblock2 = \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 1 \<rparr>"
+value "extendTree (Node testblock Leaf Leaf) testblock2"
+value"allBlocks (extendTree (Node testblock Leaf Leaf) testblock2)"
+value"allBlocks (Node testblock Leaf Leaf)@[testblock2]"
+value"blockpool_eq (allBlocks (extendTree (Node testblock Leaf Leaf) testblock2)) (allBlocks (Node testblock Leaf Leaf)@[testblock2])"
+value"blockpool_eq_set (allBlocks (extendTree (Node testblock Leaf Leaf) testblock2)) (allBlocks (Node testblock Leaf Leaf)@[testblock2])"
 
 (*-- LEMMAS + PROOFS -- *)
 
 
 
 
-export_code HashCompare' HashCompare GenBlock  blockpool_eq  block_eq valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain blocktree_eq  in Haskell  
+export_code HashCompare' HashCompare GenBlock  blockpool_eq_set  block_eq valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain blocktree_eq  in Haskell  
 
 lemma initialTree : "allBlocks tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)
@@ -213,6 +229,27 @@ lemma ExtendInitial : "(extendTree tree0 Block1) = (Node GenBlock (Node Block1 L
 
 lemma "extendTree Leaf B = Leaf"
   by simp 
+
+lemma SameBlock : assumes "block_eq bl1 bl2" shows "bl1 = bl2"
+  using assms apply(auto) done
+
+
+
+lemma SamePool : assumes "blockpool_eq blp1 blp2" shows "blp1 = blp2"
+proof (cases "blp1")
+  case Nil note nil = this
+  then show ?thesis using assms SameBlock apply(auto) 
+    using blockpool_eq.elims(2) by blast
+next
+  case (Cons a list)
+  then show ?thesis  using assms SameBlock  blockpool_eq.elims apply(simp add: set_def) try
+qed
+
+
+lemma SameTree : assumes "blocktree_eq T1 T2 = True" shows "blockpool_eq (allBlocks T1) (allBlocks T2)"
+  using assms apply(simp)
+  
+
 lemma BaseExtend : "(extendTree t b \<noteq> t) \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(induction "t")
   case Leaf
@@ -245,17 +282,22 @@ next
   qed
 qed
 
-lemma GenExtend : assumes a1:"(extendTree t b \<noteq> t)\<and>valid_t t" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+lemma GenExtend : assumes "blocktree_eq (extendTree t b) t = False" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(cases "t")
   case Leaf note LeafCase = this
   then show ?thesis using assms LeafCase
     by simp
 next
-  case (Node x1 t1 t2)
+  case (Node x1 t1 t2) note t1Node = this
   then show ?thesis proof(cases "t1")
-    case Leaf
-    then show ?thesis using assms BaseExtend 
-      by simp
+    case Leaf note t2Leaf = this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using t1Node t2Leaf assms apply(auto) done
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis using t1Node t2Leaf assms apply(auto) try
+    qed
   next
     case (Node x1 t11 t12)
     then show ?thesis using assms BaseExtend
