@@ -65,13 +65,6 @@ instance (Eq a) => Eq (Block_ext a) where {
 
 data T = Leaf | Node (Block_ext ()) T T deriving(Show);
 
-instance Arbitrary (T) where {
-arbitrary = sized arbTree;
-};
-
-arbTree :: Int -> Gen (T);
-arbTree 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
-arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)];};
 
 
 genBlock :: Block_ext ();
@@ -178,5 +171,21 @@ valid_chain_weak (b1 : b2 : c) =
 
 valid_t_weak :: T -> Bool;
 valid_t_weak t = all valid_chain_weak (allBlocksa t);
+
+
+instance Arbitrary (T) where {
+arbitrary = sized arbTree;
+};
+
+--arbTree1 :: Int -> Gen (T);
+--arbTree1 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
+--arbTree1 n = do{let (Node bl l r) = arbTree n if valid_t (Node bl l r) then return (Node bl l r); else arbTree1 n;};
+
+
+
+arbTree :: Int -> Gen (T);
+arbTree 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
+arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)];};
+
 
 }

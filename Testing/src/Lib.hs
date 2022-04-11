@@ -13,6 +13,15 @@ import qualified Blockchain(Hash, Block_ext, T, genBlock, tree0, hashComparea, h
               blockpool_eq, blocktree_eq, valid_chain_weak, valid_t_weak,blockpool_eq_set)
 import Test.QuickCheck.Property
 import qualified Data.Set as Set
+import GHC.Generics
+import Data.Maybe
+import Data.List
+import Control.Exception
+import Control.Monad
+import Test.QuickCheck
+
+
+
 prop_evenNumberPlusOneIsOdd :: Integer -> Property
 prop_evenNumberPlusOneIsOdd x = even x ==> odd (x + 1)
 
