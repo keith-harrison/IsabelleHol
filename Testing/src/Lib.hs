@@ -46,6 +46,7 @@ Lemma one extension adds one to the set of allblocks in the tree
 someFunc :: IO ()
 someFunc = quickCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 10000}) prop_tree
 
+
 {- Test 2
 Lemma two best chain is a valid chain
     assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t) -}

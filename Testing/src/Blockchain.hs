@@ -30,27 +30,13 @@ import Test.QuickCheck;
 
 data Hash = H Integer Integer deriving(Show);
 
-instance Arbitrary (Hash) where{
-  arbitrary = do
-    sla <- choose (0,4);
-    bida <- choose (0,4);
-    return (H sla bida);
-};
 
 equal_Hash :: Hash -> Hash -> Bool;
 equal_Hash (H x1 x2) (H y1 y2) = Arith.equal_int x1 y1 && Arith.equal_int x2 y2;
 
 data Block_ext a = Block_ext Integer Integer Hash Integer a deriving(Show);
 
-instance Arbitrary a => Arbitrary (Block_ext a) where{
-  arbitrary = do
-    sla <- choose (0,4);
-    txsa <- choose(0,4);
-    preda <- arbitrary;
-    bida <- choose (0,4);
-    morea <- arbitrary;
-    return (Block_ext sla txsa preda bida morea);
-};
+
 
 equal_Block_ext :: forall a. (Eq a) => Block_ext a -> Block_ext a -> Bool;
 equal_Block_ext (Block_ext sla txsa preda bida morea)
@@ -195,11 +181,29 @@ arbTree1 n = do{
     let bush = sized arbTree; in frequency[(1, return (Node block Leaf Leaf)),(3, return (Node block bush bush))]; };
 -}
 -- `suchThat` valid t - to include valid t precondition 
+
+instance Arbitrary (Hash) where{
+  arbitrary = do
+    sla <- choose (0,4);
+    bida <- choose (0,4);
+    return (H sla bida);
+};
+
+instance Arbitrary a => Arbitrary (Block_ext a) where{
+  arbitrary = do
+    sla <- choose (0,4);
+    txsa <- choose(0,4);
+    preda <- arbitrary;
+    bida <- choose (0,4);
+    morea <- arbitrary;
+    return (Block_ext sla txsa preda bida morea);
+};
 instance Arbitrary (T) where {
 arbitrary = (sized arbTree);
 };
 
 arbTree :: Int -> Gen (T);
 arbTree 0 = do{bl <- arbitrary; return (Node bl Leaf Leaf);};
-arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)]; };
+arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); 
+in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)]; };
 }
