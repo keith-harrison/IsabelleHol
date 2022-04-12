@@ -224,6 +224,18 @@ export_code HashCompare' HashCompare GenBlock  blockpool_eq_set  block_eq valid_
 lemma initialTree : "allBlocks tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)
 
+lemma initialExtend : "(extendTree tree0 b \<noteq> tree0)
+\<Longrightarrow> set (allBlocks (extendTree tree0 b)) = set ([b]@ allBlocks tree0)"
+  apply(simp add : GenBlock_def tree0_def)
+  by auto
+
+lemma initialExtendValid : "valid_t tree0 \<Longrightarrow>valid_t (extendTree tree0 b)"
+  apply(simp add: GenBlock_def tree0_def) done
+
+lemma initialBestChain : "valid_t (extendTree tree0 b)
+\<Longrightarrow> valid_chain( best_chain s (extendTree tree0 b)) "
+  apply(simp add: GenBlock_def tree0_def) done 
+
 lemma ExtendInitial : "(extendTree tree0 Block1) = (Node GenBlock (Node Block1 Leaf Leaf) Leaf)"
   by (simp add: GenBlock_def tree0_def Block1_def)
 
@@ -234,9 +246,8 @@ lemma SameBlock : assumes "block_eq bl1 bl2" shows "bl1 = bl2"
   using assms apply(auto) done
 
 lemma SamePool : assumes "blockpool_eq (x) (y)" shows "set x = set y"
-  using assms  try
-  using blockpool_eq.elims(2) by blast 
-
+  using assms  
+  by (smt (verit, best) blockpool_eq.elims(2))
 
 lemma SameTreeBase : assumes "blocktree_eq T1 T2" shows "T1 = T2"
   using assms SameBlock 
@@ -246,7 +257,8 @@ lemma SameTree : assumes "blocktree_eq T1 T2" shows "blockpool_eq (allBlocks T1)
   using assms SamePool 
   by (smt (verit, del_insts) Int_absorb SameTreeBase blockpool_eq.elims(3))
 
-lemma BaseExtend : "(extendTree t b \<noteq> t) \<Longrightarrow> set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+lemma BaseExtend : "(extendTree t b \<noteq> t) 
+\<Longrightarrow> set (allBlocks (extendTree t b)) = set ([b]@ allBlocks t)"
 proof(induction "t")
   case Leaf
   then show ?case 
@@ -278,7 +290,8 @@ next
   qed
 qed
 
-lemma GenExtend : assumes "(extendTree t b)\<noteq> t" shows "set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+lemma GenExtend : assumes "valid_t t\<and> extendTree t b \<noteq> t" shows
+"set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
 proof(cases "t")
   case Leaf note LeafCase = this
   then show ?thesis using assms LeafCase 
@@ -300,6 +313,22 @@ next
   qed
 qed
 
+lemma valid_t_blocks : assumes "valid_t (Node m l r)" shows ""
+
+lemma validExtend : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
+proof(cases "l")
+  case Leaf note lleaf = this
+  then show ?thesis proof(cases "r")
+    case Leaf
+    then show ?thesis using assms lleaf apply(simp add: GenBlock_def tree0_def)
+      by auto
+  next
+    case (Node x21 x22 x23)
+    then show ?thesis using assms lleaf initialExtendValid apply(simp add: GenBlock_def tree0_def allBlocks'.cases allBlocks'.elims set_def fun_def ) sorry
+next
+  case (Node x21 x22 x23)
+  then show ?thesis sorry
+qed
 
 lemma best_c_none : "best_c n [] = None"
   by(simp)
@@ -347,10 +376,10 @@ next
   case (Node x21 x22 x23) note lnode = this
   then show ?thesis proof(cases "r")
     case Leaf
-    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) try
+    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) sorry
   next
     case (Node x1 x2 x3)
-    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) try
+    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) sorry
   qed
 qed
 
