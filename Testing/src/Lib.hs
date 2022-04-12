@@ -1,7 +1,7 @@
 module Lib
     ( someFunc
     ) where
-import Test.QuickCheck (quickCheck, verboseCheck);
+import Test.QuickCheck (quickCheck, verboseCheckWith,maxSize, stdArgs,quickCheckWith,maxSuccess);
 import qualified Option;
 import qualified Product_Type;
 import qualified List;
@@ -18,8 +18,7 @@ import Data.Maybe
 import Data.List
 import Control.Exception
 import Control.Monad
-import Test.QuickCheck
-
+import Test.SmallCheck(smallCheck)
 
 
 prop_evenNumberPlusOneIsOdd :: Integer -> Property
@@ -34,14 +33,23 @@ prop_tree t b = (not (Blockchain.blocktree_eq (Blockchain.extendTree t b) t)) ==
 prop_valid_chain :: Integer -> Blockchain.T -> Property
 prop_valid_chain s t = ((Blockchain.valid_t t)) ==> Blockchain.valid_chain(Blockchain.best_chain s t) == True
 
-
--- Lemma one extension adds one to the set of allblocks in the tree
--- "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
--- Lemma two best chain is a valid chain
--- assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t)
-
+{-
+Test 1
+Lemma one extension adds one to the set of allblocks in the tree
+    "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
+Lemma two best chain is a valid chain
+    assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t)
+-}
+{- Test 1
+Lemma one extension adds one to the set of allblocks in the tree
+    "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)" -}
 someFunc :: IO ()
-someFunc = quickCheck (prop_tree);
+someFunc = quickCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 10000}) prop_tree
 
--- Node (Block_ext 1 1 (H 1 2) 1 ()) Leaf Leaf
--- Block_ext 2 1 (H 1 1) 1 ()
+{- Test 2
+Lemma two best chain is a valid chain
+    assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t) -}
+--someFunc :: IO ()
+--someFunc = verboseCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 100 }) prop_valid_chain
+
+

@@ -32,8 +32,8 @@ data Hash = H Integer Integer deriving(Show);
 
 instance Arbitrary (Hash) where{
   arbitrary = do
-    Positive(sla) <- arbitrary;
-    Positive(bida) <- arbitrary;
+    sla <- choose (0,4);
+    bida <- choose (0,4);
     return (H sla bida);
 };
 
@@ -44,10 +44,10 @@ data Block_ext a = Block_ext Integer Integer Hash Integer a deriving(Show);
 
 instance Arbitrary a => Arbitrary (Block_ext a) where{
   arbitrary = do
-    Positive(sla) <- arbitrary;
-    Positive(txsa) <- arbitrary;
+    sla <- choose (0,4);
+    txsa <- choose(0,4);
     preda <- arbitrary;
-    Positive(bida) <- arbitrary;
+    bida <- choose (0,4);
     morea <- arbitrary;
     return (Block_ext sla txsa preda bida morea);
 };
@@ -64,6 +64,7 @@ instance (Eq a) => Eq (Block_ext a) where {
 };
 
 data T = Leaf | Node (Block_ext ()) T T deriving(Show);
+
 
 
 
@@ -173,20 +174,32 @@ valid_t_weak :: T -> Bool;
 valid_t_weak t = all valid_chain_weak (allBlocksa t);
 
 
+--Tests getting around 10000/60000 tests
 
+{- 
+instance Arbitrary (T) where{
+  arbitrary = (sized arbTree1);
+};
+arbTree1 :: Int -> Gen(T);
+arbTree1 0 = do{
+    sla1 <- choose (0);
+    bida1 <- choose (0);
+    sla <- choose (0);
+    txsa <- choose(0,1);
+    bida <- choose (0);
+    morea <- arbitrary;
+    block <- frequency[(1,return genBlock),(10,return genBlock)];
+    return (Node block Leaf Leaf);};
+arbTree1 n = do{
+    block <- frequency[(1,return genBlock ),(10,return genBlock)];
+    let bush = sized arbTree; in frequency[(1, return (Node block Leaf Leaf)),(3, return (Node block bush bush))]; };
+-}
+-- `suchThat` valid t - to include valid t precondition 
 instance Arbitrary (T) where {
-arbitrary = sized arbTree1;
+arbitrary = (sized arbTree);
 };
 
-arbTree1 :: Int -> Gen (T);
-arbTree1 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
-arbTree1 n = do{let arbitrary = (sized arbTree); in if valid_t arbitrary then arbitrary else arbTree1 n;};
-
-
-
 arbTree :: Int -> Gen (T);
-arbTree 0 = do{bl <- arbitrary; return  (Node bl Leaf Leaf)};
+arbTree 0 = do{bl <- arbitrary; return (Node bl Leaf Leaf);};
 arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)]; };
-
-
 }
