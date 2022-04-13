@@ -313,9 +313,58 @@ next
   qed
 qed
 
+value "valid_t (Node GenBlock Leaf Leaf)"
+value "(extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
+value "valid_t (extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
+lemma validExtend1 : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
+proof(cases "l")
+  case Leaf note lleaf=this
+  then show ?thesis proof(cases "r")
+    case Leaf
+    then show ?thesis using assms lleaf apply(simp add: GenBlock_def tree0_def)  apply(rule extendTree.induct) try
+  next
+    case (Node x21 x22 x23)
+    then show ?thesis sorry
+  qed
+next
+  case (Node x21 x22 x23) note lnode = this
+  then show ?thesis proof(cases "r")
+    case Leaf
+    then show ?thesis sorry
+  next
+    case (Node x21 x22 x23)
+    then show ?thesis sorry
+  qed
+qed
 
+lemma validExtend2 : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
+  using assms
+proof(induction "r" arbitrary: "l")
+  case Leaf note inductr=this
+  then show ?case proof(cases "r")
+    case Leaf note rleaf=this
+    then show ?thesis proof(cases "l")
+      case Leaf
+      then show ?thesis using assms rleaf inductr apply(auto) done
+    next
+      case (Node x21 x22 x23) note lnode=this
+      then show ?thesis proof(induction "l")
+        case Leaf
+        then show ?case using assms rleaf apply(simp add: GenBlock_def tree0_def) done
+      next
+        case (Node x1 l1 l2)
+        then show ?case using assms lnode inductr rleaf apply(simp add: GenBlock_def tree0_def) apply(rule extendTree.induct) apply(simp) apply(rule valid_chain.induct) apply(simp) apply(auto) sorry
+      qed
+    qed
+  next
+    case (Node x21 x22 x23)
+    then show ?thesis sorry
+  qed
+next
+  case (Node x1 x2 x3)
+  then show ?case sorry
+qed
 
-(*lemma validExtend : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"*)
 lemma best_c_none : "best_c n [] = None"
   by(simp)
 
@@ -343,6 +392,7 @@ next
 qed 
 
 value "valid_chain(best_chain (-1) (Node GenBlock Leaf Leaf))"
+
 lemma base_best_valid :"valid_chain(best_chain s (Node GenBlock Leaf Leaf))"
   apply(auto) apply(simp add:GenBlock_def) done
 

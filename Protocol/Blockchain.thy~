@@ -315,21 +315,7 @@ qed
 
 
 
-lemma validExtend : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
-proof(cases "l")
-  case Leaf note lleaf = this
-  then show ?thesis proof(cases "r")
-    case Leaf
-    then show ?thesis using assms lleaf apply(simp add: GenBlock_def tree0_def)
-      by auto
-  next
-    case (Node x21 x22 x23)
-    then show ?thesis using assms lleaf initialExtendValid apply(simp add: GenBlock_def tree0_def allBlocks'.cases allBlocks'.elims o_def ) apply(induct x23, simp_all) apply(induct x22, simp_all) try
-next
-  case (Node x21 x22 x23)
-  then show ?thesis sorry
-qed
-
+(*lemma validExtend : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"*)
 lemma best_c_none : "best_c n [] = None"
   by(simp)
 
