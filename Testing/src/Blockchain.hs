@@ -207,3 +207,5 @@ arbTree 0 = do{bl <- arbitrary; return (Node bl Leaf Leaf);};
 arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); 
 in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)]; };
 }
+
+

@@ -313,7 +313,7 @@ next
   qed
 qed
 
-lemma valid_t_blocks : assumes "valid_t (Node m l r)" shows ""
+
 
 lemma validExtend : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
 proof(cases "l")
@@ -324,7 +324,7 @@ proof(cases "l")
       by auto
   next
     case (Node x21 x22 x23)
-    then show ?thesis using assms lleaf initialExtendValid apply(simp add: GenBlock_def tree0_def allBlocks'.cases allBlocks'.elims set_def fun_def ) sorry
+    then show ?thesis using assms lleaf initialExtendValid apply(simp add: GenBlock_def tree0_def allBlocks'.cases allBlocks'.elims o_def ) apply(induct x23, simp_all) apply(induct x22, simp_all) try
 next
   case (Node x21 x22 x23)
   then show ?thesis sorry
