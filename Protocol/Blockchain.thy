@@ -52,6 +52,20 @@ fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
 
+fun block_get where
+"block_get (Node m l r) = m"|
+"block_get Leaf = GenBlock"
+
+fun valid_t_weak where
+"valid_t_weak (Node m Leaf Leaf) = True"|
+"valid_t_weak (Node m Leaf r) = ((valid_blocks (block_get r) m )\<and> valid_t_weak r)"|
+"valid_t_weak (Node m l Leaf) = ((valid_blocks (block_get l) m )\<and> valid_t_weak l)"|
+"valid_t_weak (Node m l r) = 
+(valid_blocks (block_get l) m  \<and> valid_blocks (block_get r) m \<and> valid_t_weak r \<and> valid_t_weak l)"|
+"valid_t_weak Leaf = True"
+
+
+
 (*-- Functions for allBlocks/allBlocks' and extendTree --*)
 fun allBlocks :: "T \<Rightarrow> BlockPool" where 
 "allBlocks (Node m l r) = allBlocks l @ allBlocks r @ [m]"|
@@ -115,16 +129,7 @@ fun blocktree_eq :: "T \<Rightarrow> T \<Rightarrow> bool" where
 "blocktree_eq Leaf b = False"|
 "blocktree_eq a Leaf = False" 
 
-fun block_get where
-"block_get (Node m l r) = m"|
-"block_get Leaf = GenBlock"
 
-fun valid_t_weak where
-"valid_t_weak (Node m Leaf Leaf) = True"|
-"valid_t_weak (Node m Leaf r) = ((valid_blocks (block_get r) m )\<and> valid_t_weak r)"|
-"valid_t_weak (Node m l Leaf) = ((valid_blocks (block_get l) m )\<and> valid_t_weak l)"|
-"valid_t_weak (Node m l r) = (valid_blocks (block_get l) m  \<and> valid_blocks (block_get r) m \<and> valid_t_weak r \<and> valid_t_weak l)"|
-"valid_t_weak Leaf = True"
 (* Unit Testing Code*)
 
 definition "test_tree_bad = (Node GenBlock (Node \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>

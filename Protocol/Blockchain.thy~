@@ -45,18 +45,12 @@ fun HashCompare :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "HashCompare bl1 bl2 = HashCompare' (pred bl2) bl1"
 
 fun valid_blocks ::"Block \<Rightarrow> Block \<Rightarrow> bool" where
-"valid_blocks b1 b2 =  (HashCompare b2 b1 \<and> (sl b2 < sl b1)) "
+"valid_blocks b1 b2 =  ( HashCompare b2 b1 \<and>(sl b2 < sl b1))"
 
 fun valid_chain :: "Chain \<Rightarrow> bool" where
 "valid_chain [] = False"|
 "valid_chain [b1] = (if b1 = GenBlock then True else False)"|
 "valid_chain (b1#b2#c) = (if valid_blocks b1 b2 \<and> (b1 \<noteq> GenBlock) then valid_chain (b2#c) else False)"
-
-fun valid_chain_weak :: "Chain \<Rightarrow> bool" where 
-"valid_chain_weak [] = False"|
-"valid_chain_weak [b1] = True"|
-"valid_chain_weak (b1#b2#c) = (if valid_blocks b1 b2 then valid_chain_weak (b2#c) else False)"
-
 
 (*-- Functions for allBlocks/allBlocks' and extendTree --*)
 fun allBlocks :: "T \<Rightarrow> BlockPool" where 
@@ -100,9 +94,6 @@ fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<tim
 fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Block list" where
 "get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
 
-
-
-
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "best_chain s Leaf = []"|
 "best_chain s (Node x l r) = (if s > 0 then get_first ( best_c s (allBlocks' (Node x l r)))else [GenBlock])"
@@ -124,6 +115,16 @@ fun blocktree_eq :: "T \<Rightarrow> T \<Rightarrow> bool" where
 "blocktree_eq Leaf b = False"|
 "blocktree_eq a Leaf = False" 
 
+fun block_get where
+"block_get (Node m l r) = m"|
+"block_get Leaf = GenBlock"
+
+fun valid_t_weak where
+"valid_t_weak (Node m Leaf Leaf) = True"|
+"valid_t_weak (Node m Leaf r) = ((valid_blocks (block_get r) m )\<and> valid_t_weak r)"|
+"valid_t_weak (Node m l Leaf) = ((valid_blocks (block_get l) m )\<and> valid_t_weak l)"|
+"valid_t_weak (Node m l r) = (valid_blocks (block_get l) m  \<and> valid_blocks (block_get r) m \<and> valid_t_weak r \<and> valid_t_weak l)"|
+"valid_t_weak Leaf = True"
 (* Unit Testing Code*)
 
 definition "test_tree_bad = (Node GenBlock (Node \<lparr>sl = 1, txs =1, pred = H 0 0, bid = 1\<rparr>
@@ -139,7 +140,7 @@ definition "test_tree = (Node GenBlock
 definition "extend_block = \<lparr>sl = 4, txs = 1, pred = H 3 6, bid = 4\<rparr>"
 
 
-value "valid_blocks Block1 GenBlock"
+value "valid_blocks Block3 Block2"
 value "valid_chain [Block1,GenBlock]"
 value "Block1 # [GenBlock]"
 
@@ -165,15 +166,6 @@ value "valid_blocks Block2 Block1"
 value "valid_blocks Block3 Block2"
 value "valid_blocks Block2 Block3"
 value "b#[c]"
-
-
-fun valid_t_weak where
-"valid_t_weak Leaf = True"|
-"valid_t_weak t = (\<forall>c \<in> set(allBlocks' t).valid_chain_weak c)"
-
-fun valid_t_weak2 where
-"valid_t_weak2 Leaf = True"|
-"valid_t_weak2 (Node m l r) =((\<forall>c \<in> set(allBlocks' (l)).valid_chain_weak (m#c))\<and>(\<forall>c \<in> set(allBlocks' (r)).valid_chain_weak (m#c)))"
 
 value "valid_t test_tree_bad"
 
@@ -222,10 +214,7 @@ value"blockpool_eq_set (allBlocks (extendTree (Node testblock Leaf Leaf) testblo
 
 (*-- LEMMAS + PROOFS -- *)
 
-
-
-
-export_code HashCompare' HashCompare GenBlock  blockpool_eq_set  block_eq valid_blocks valid_chain valid_chain_weak allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain blocktree_eq  in Haskell  
+export_code HashCompare' HashCompare GenBlock  blockpool_eq_set  block_eq valid_blocks valid_chain  allBlocks allBlocksAppend allBlocks' tree0 extendTree valid_t valid_t_weak best_c get_first best_chain blocktree_eq  in Haskell  
 
 lemma initialTree : "allBlocks tree0 = [GenBlock]" 
   by (simp add: GenBlock_def tree0_def)
@@ -235,8 +224,14 @@ lemma initialExtend : "(extendTree tree0 b \<noteq> tree0)
   apply(simp add : GenBlock_def tree0_def)
   by auto
 
+lemma base_best_valid :"valid_chain(best_chain s (Node GenBlock Leaf Leaf))"
+  apply(auto) apply(simp add:GenBlock_def) done
+
 lemma initialExtendValid : "valid_t tree0 \<Longrightarrow>valid_t (extendTree tree0 b)"
   apply(simp add: GenBlock_def tree0_def) done
+
+lemma initialExtendweakValid : "valid_t_weak tree0 \<Longrightarrow>valid_t_weak (extendTree tree0 b)"
+  by (simp add: tree0_def)
 
 lemma initialBestChain : "valid_t (extendTree tree0 b)
 \<Longrightarrow> valid_chain( best_chain s (extendTree tree0 b)) "
@@ -261,7 +256,8 @@ lemma SameTreeBase : assumes "blocktree_eq T1 T2" shows "T1 = T2"
 
 lemma SameTree : assumes "blocktree_eq T1 T2" shows "blockpool_eq (allBlocks T1) (allBlocks T2)"
   using assms SamePool 
-  by (smt (verit, del_insts) Int_absorb SameTreeBase blockpool_eq.elims(3))
+  by (metis (no_types, opaque_lifting) SameTreeBase blockpool_eq.simps(1) blockpool_eq.simps(3) inf.idem valid_chain.cases)
+
 
 lemma BaseExtend : "(extendTree t b \<noteq> t) 
 \<Longrightarrow> set (allBlocks (extendTree t b)) = set ([b]@ allBlocks t)"
@@ -319,48 +315,6 @@ next
   qed
 qed
 
-value "valid_t (Node GenBlock Leaf Leaf)"
-value "(extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
-value "valid_t (extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
-lemma validExtend1 : "valid_t_weak2 t \<Longrightarrow> valid_t_weak2 (extendTree t b)"
-proof(induction "extendTree t b")
-  case Leaf
-  then show ?case 
-    by simp
-next
-  case (Node x1 t1 t2)
-  then show ?case try
-qed
-
-
-lemma validExtend2 : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
-  using assms
-proof(induction "r" arbitrary: "l")
-  case Leaf note inductr=this
-  then show ?case proof(cases "r")
-    case Leaf note rleaf=this
-    then show ?thesis proof(cases "l")
-      case Leaf
-      then show ?thesis using assms rleaf inductr apply(auto) done
-    next
-      case (Node x21 x22 x23) note lnode=this
-      then show ?thesis proof(induction "l")
-        case Leaf
-        then show ?case using assms rleaf apply(simp add: GenBlock_def tree0_def) done
-      next
-        case (Node x1 l1 l2)
-        then show ?case using assms lnode inductr rleaf apply(simp add: GenBlock_def tree0_def) apply(rule extendTree.induct) apply(simp) apply(rule valid_chain.induct) apply(simp) apply(auto) sorry
-      qed
-    qed
-  next
-    case (Node x21 x22 x23)
-    then show ?thesis sorry
-  qed
-next
-  case (Node x1 x2 x3)
-  then show ?case sorry
-qed
-
 lemma best_c_none : "best_c n [] = None"
   by(simp)
 
@@ -387,14 +341,55 @@ next
     by auto
 qed 
 
-value "valid_chain(best_chain (-1) (Node GenBlock Leaf Leaf))"
+lemma lessThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak (Node m l r)" shows "( sl m < sl (block_get r) \<and> sl m < sl(block_get l))"
+  using assms apply(auto) apply(rule valid_t_weak.cases)
+  apply auto[1] 
+  apply simp
+  apply simp 
+  apply simp 
+  apply simp
+  apply (metis allBlocks.elims valid_blocks.elims(2) valid_t_weak.simps(4)) apply(rule block_get.cases)
+  apply auto[1] 
+  by (metis allBlocks.elims valid_blocks.elims(2) valid_t_weak.simps(4)) 
 
-lemma base_best_valid :"valid_chain(best_chain s (Node GenBlock Leaf Leaf))"
-  apply(auto) apply(simp add:GenBlock_def) done
+lemma predThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak (Node m l r)" shows "( HashCompare m (block_get r) \<and> HashCompare m (block_get l))"
+  using assms apply(auto) apply(rule valid_t_weak.cases)
+  apply auto[1] 
+  apply simp
+  apply simp 
+  apply simp 
+  apply simp apply(rule block_get.cases)
+  apply blast
+  apply (metis HashCompare.elims(2) valid_blocks.elims(2) valid_t.cases valid_t_weak.simps(5))
+  by (metis (no_types, lifting) HashCompare.elims(2) block_get.elims valid_blocks.elims(2) valid_t_weak.simps(5)) 
 
 
+lemma validExtend : assumes "valid_t_weak t" shows "valid_t_weak (extendTree t b)"
+proof(cases "t")
+  case Leaf
+  then show ?thesis 
+    by simp
+next
+  case (Node x1 t1 t2) note t = this
+  then show ?thesis proof(cases "t1")
+    case Leaf note leaft1=this
+    then show ?thesis proof(cases "t2")
+      case Leaf
+      then show ?thesis using assms leaft1 t apply(auto) done
+    next
+      case (Node x21 x22 x23)
+      then show ?thesis  using assms leaft1 t  initialExtendweakValid lessThan  apply(simp add: tree0_def GenBlock_def) apply(auto) apply(rule HashCompare'.cases HashCompare'.elims HashCompare'.simps)
+         apply(rule valid_t_weak.cases valid_t_weak.elims valid_t_weak.simps valid_t_weak.induct) apply(rule extendTree.cases extendTree.elims extendTree.simps extendTree.induct) 
+        apply(rule block_get.cases block_get.elims block_get.simps)
+        apply auto[1] apply(rule valid_t.cases valid_t.elims valid_t.simps valid_t_weak.induct) apply(simp+)  try
+    qed
+  next
+    case (Node x21 x22 x23)
+    then show ?thesis sorry
+  qed
+  qed
 
-lemma best_valid: assumes "valid_t (Node x l r)" shows "valid_chain (best_chain s (Node x l r))"
+lemma best_valid: assumes "x = GenBlock\<and>valid_t_weak (Node x l r)" shows "valid_chain (best_chain s (Node x l r))"
 proof(cases "l")
   case Leaf note lleaf = this
   then show ?thesis proof(cases "r")
@@ -408,7 +403,7 @@ next
   case (Node x21 x22 x23) note lnode = this
   then show ?thesis proof(cases "r")
     case Leaf
-    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) sorry
+    then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def find_def o_def) sorry
   next
     case (Node x1 x2 x3)
     then show ?thesis using assms lnode find_in best_c_in base_best_valid apply(auto) apply(simp add: GenBlock_def append_def find_def map_def set_def) sorry
