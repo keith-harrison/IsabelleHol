@@ -64,7 +64,21 @@ fun valid_t_weak where
 (valid_blocks (block_get l) m  \<and> valid_blocks (block_get r) m \<and> valid_t_weak r \<and> valid_t_weak l)"|
 "valid_t_weak Leaf = True"
 
+fun hash_t where
+"hash_t (Node m Leaf Leaf) = True"|
+"hash_t (Node m Leaf r) = ((HashCompare m (block_get r)  )\<and> hash_t r)"|
+"hash_t (Node m l Leaf) = ((HashCompare m (block_get l)  )\<and> hash_t l)"|
+"hash_t(Node m l r) = 
+(HashCompare m (block_get l)  \<and> HashCompare m (block_get r)  \<and> hash_t r \<and> hash_t l)"|
+"hash_t Leaf = True"
 
+fun sl_t where
+"sl_t (Node m Leaf Leaf) = True"|
+"sl_t (Node m Leaf r) = ((sl m < sl (block_get r)  )\<and> sl_t r)"|
+"sl_t (Node m l Leaf) = ((sl m < sl (block_get l)  )\<and> sl_t l)"|
+"sl_t(Node m l r) = 
+(sl m < sl (block_get l)  \<and> sl m < sl (block_get r)  \<and> sl_t r \<and> sl_t l)"|
+"sl_t Leaf = True"
 
 (*-- Functions for allBlocks/allBlocks' and extendTree --*)
 fun allBlocks :: "T \<Rightarrow> BlockPool" where 
@@ -346,7 +360,7 @@ next
     by auto
 qed 
 
-lemma lessThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak (Node m l r)" shows "( sl m < sl (block_get r) \<and> sl m < sl(block_get l))"
+lemma slThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak (Node m l r)\<and>block_get (Node m l r) = m" shows "( sl m < sl (block_get r) \<and> sl m < sl(block_get l))"
   using assms apply(auto) apply(rule valid_t_weak.cases)
   apply auto[1] 
   apply simp
@@ -356,7 +370,38 @@ lemma lessThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak
   apply (metis allBlocks.elims valid_blocks.elims(2) valid_t_weak.simps(4)) apply(rule block_get.cases)
   apply auto[1] 
   by (metis allBlocks.elims valid_blocks.elims(2) valid_t_weak.simps(4)) 
-
+lemma slThan2 : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and> sl_t (Node m l r)\<and>block_get (Node m l r) = m" shows "( sl m < sl (block_get r) \<and> sl m < sl(block_get l))"
+  using assms apply(auto) apply(rule valid_t_weak.cases)
+  apply auto[1] 
+  apply simp
+  apply simp 
+  apply simp 
+  apply simp
+  apply (metis T.distinct(1) T.inject  assms block_get.elims sl_t.simps(5))
+  by (metis block_get.elims sl_t.simps(4))
+lemma slThanAll : assumes "r\<noteq>Leaf \<and>l \<noteq>Leaf\<and>valid_t_weak(Node m l r)" shows "(sl_t (Node m l r))"
+ proof(cases "l")
+   case Leaf note lleaf=this
+   then show ?thesis proof(cases "r")
+     case Leaf
+     then show ?thesis using assms 
+       by simp
+   next
+     case (Node x21 x22 x23)
+     then show ?thesis using assms lleaf 
+       by simp
+   qed
+   next
+   case (Node x21 x22 x23) note rnode=this
+   then show ?thesis proof(cases "r")
+     case Leaf
+     then show ?thesis using assms rnode
+       by simp
+   next
+     case (Node x1 t1 t2)
+     then show ?thesis using assms rnode slThan slThan2 apply(auto) try
+   qed
+ qed
 lemma predThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak (Node m l r)" shows "( HashCompare m (block_get r) \<and> HashCompare m (block_get l))"
   using assms apply(auto) apply(rule valid_t_weak.cases)
   apply auto[1] 
@@ -367,7 +412,15 @@ lemma predThan : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>valid_t_weak
   apply blast
   apply (metis HashCompare.elims(2) valid_blocks.elims(2) valid_t.cases valid_t_weak.simps(5))
   by (metis (no_types, lifting) HashCompare.elims(2) block_get.elims valid_blocks.elims(2) valid_t_weak.simps(5)) 
-
+lemma predThan2 : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>hash_t(Node m l r)" shows "( HashCompare m (block_get r) \<and> HashCompare m (block_get l))"
+  using assms predThan apply(auto) apply(rule valid_t_weak.cases)
+  apply auto[1] 
+  apply simp
+  apply simp 
+  apply simp 
+  apply simp apply(rule block_get.cases)
+  apply blast 
+  try
 
 lemma validExtend : assumes "valid_t_weak t" shows "valid_t_weak (extendTree t b)"
 proof(cases "t")
@@ -383,10 +436,10 @@ next
       then show ?thesis using assms leaft1 t apply(auto) done
     next
       case (Node x21 x22 x23)
-      then show ?thesis  using assms leaft1 t  initialExtendweakValid lessThan  apply(simp add: tree0_def GenBlock_def) apply(auto) apply(rule HashCompare'.cases HashCompare'.elims HashCompare'.simps)
+      then show ?thesis  using assms leaft1 t  initialExtendweakValid slThan  apply(simp add: tree0_def GenBlock_def) apply(auto) apply(rule HashCompare'.cases HashCompare'.elims HashCompare'.simps)
          apply(rule valid_t_weak.cases valid_t_weak.elims valid_t_weak.simps valid_t_weak.induct) apply(rule extendTree.cases extendTree.elims extendTree.simps extendTree.induct) 
         apply(rule block_get.cases block_get.elims block_get.simps)
-        apply auto[1] apply(rule valid_t.cases valid_t.elims valid_t.simps valid_t_weak.induct) apply(simp+)  try
+        apply auto[1] apply(rule valid_t.cases valid_t.elims valid_t.simps valid_t_weak.induct) apply(simp+)  sorry
     qed
   next
     case (Node x21 x22 x23)
