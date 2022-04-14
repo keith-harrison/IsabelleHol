@@ -167,8 +167,14 @@ value "valid_blocks Block2 Block3"
 value "b#[c]"
 
 
-definition valid_t_weak where
+fun valid_t_weak where
+"valid_t_weak Leaf = True"|
 "valid_t_weak t = (\<forall>c \<in> set(allBlocks' t).valid_chain_weak c)"
+
+fun valid_t_weak2 where
+"valid_t_weak2 Leaf = True"|
+"valid_t_weak2 (Node m l r) =((\<forall>c \<in> set(allBlocks' (l)).valid_chain_weak (m#c))\<and>(\<forall>c \<in> set(allBlocks' (r)).valid_chain_weak (m#c)))"
+
 value "valid_t test_tree_bad"
 
 value "valid_t test_tree_bad2"
@@ -316,34 +322,16 @@ qed
 value "valid_t (Node GenBlock Leaf Leaf)"
 value "(extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
 value "valid_t (extendTree (Node GenBlock Leaf Leaf) \<lparr>sl = - 1, txs = - 1, pred = H 0 0, bid = - 1\<rparr>)"
-lemma validExtend1 : assumes "valid_t t" shows"valid_t (extendTree t b)"
-proof(induction "t")
+lemma validExtend1 : "valid_t_weak2 t \<Longrightarrow> valid_t_weak2 (extendTree t b)"
+proof(induction "extendTree t b")
   case Leaf
-  then show ?case by simp
+  then show ?case 
+    by simp
 next
   case (Node x1 t1 t2)
-  then show ?case 
+  then show ?case try
 qed
 
-proof(cases "l")
-  case Leaf note lleaf=this
-  then show ?thesis proof(cases "r")
-    case Leaf
-    then show ?thesis using assms lleaf apply(simp add: GenBlock_def tree0_def) apply(rule extendTree.induct) try
-  next
-    case (Node x21 x22 x23)
-    then show ?thesis sorry
-  qed
-next
-  case (Node x21 x22 x23) note lnode = this
-  then show ?thesis proof(cases "r")
-    case Leaf
-    then show ?thesis sorry
-  next
-    case (Node x21 x22 x23)
-    then show ?thesis sorry
-  qed
-qed
 
 lemma validExtend2 : assumes "valid_t (Node m l r)" shows"valid_t (extendTree (Node m l r) b)"
   using assms
