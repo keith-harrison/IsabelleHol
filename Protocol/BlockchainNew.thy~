@@ -224,6 +224,21 @@ lemma predThan2 : assumes "hash_t t \<and> t = (Node2 m l r)"
   shows "( HashCompare m (block_get r) \<and> HashCompare m (block_get l))"
   using assms by auto
 
+lemma BaseExtend : "(extendTree t b \<noteq> t) 
+\<Longrightarrow> set (allBlocks (extendTree t b)) = set ([b]@ allBlocks t)"
+proof(induction t)
+  case (Leaf x)
+  then show ?case
+    by auto
+next
+  case (Node x1a t)
+  then show ?case 
+    by auto
+next
+  case (Node2 x1a t1 t2)
+  then show ?case
+    by fastforce
+qed
 
 lemma hashAll : assumes "valid_t_weak t" shows "hash_t t"
   using assms oops
@@ -231,10 +246,21 @@ lemma hashAll : assumes "valid_t_weak t" shows "hash_t t"
 lemma validSame : assumes "valid_t_weak t" shows "sl_t t \<and> hash_t t"
   using assms oops
 
-lemma BaseExtend : "(extendTree t b \<noteq> t) 
-\<Longrightarrow> set (allBlocks (extendTree t b)) = set ([b]@ allBlocks t)" oops
+lemma slExtend :  "sl_t t \<and> block_get t = GenBlock \<Longrightarrow> sl_t(extendTree t b)"
+proof(induction "t")
+  case (Leaf x)
+  then show ?case
+    by simp
+next
+  case (Node x1a t)
+  then show ?case apply(simp add: GenBlock_def) oops
+next
+  case (Node2 x1a t1 t2)
+  then show ?case oops
+qed
 
-lemma validExtend : assumes "valid_t_weak t" shows "valid_t_weak (extendTree t b)"
+
+lemma validExtend : assumes "valid_t_weak t \<and> block_get t = GenBlock" shows "valid_t_weak (extendTree t b)"
   using assms oops
 
 lemma best_valid: assumes "s>0\<and>block_get t = GenBlock\<and>valid_t_weak t" 
@@ -245,7 +271,7 @@ proof(cases "t")
     using GenBlock_def assms by auto
 next
   case (Node x21 x22)
-  then show ?thesis apply(simp add: GenBlock_def) using GenBlock_def assms try
+  then show ?thesis apply(simp add: GenBlock_def) using GenBlock_def assms oops
 next
   case (Node2 x31 x32 x33)
   then show ?thesis sorry
