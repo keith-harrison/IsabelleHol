@@ -1,4 +1,4 @@
-{-# LANGUAGE EmptyDataDecls, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
 module Product_Type() where {
 

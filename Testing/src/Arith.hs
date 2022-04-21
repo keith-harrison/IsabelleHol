@@ -1,4 +1,8 @@
-{-# LANGUAGE EmptyDataDecls, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Redundant if" #-}
 
 module Arith(Num, Int(..), less_int, equal_int, less_eq_int) where {
 

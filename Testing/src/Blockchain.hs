@@ -1,5 +1,12 @@
-{-# LANGUAGE EmptyDataDecls, RankNTypes, ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell,AllowAmbiguousTypes,BlockArguments, UndecidableInstances, DeriveDataTypeable, DeriveGeneric, StandaloneDeriving, DeriveAnyClass #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE AllowAmbiguousTypes, BlockArguments, UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Redundant if" #-}
+{-# HLINT ignore "Eta reduce" #-}
+{-# HLINT ignore "Replace case with maybe" #-}
+{-# HLINT ignore "Use <$>" #-}
 module
   Blockchain(Hash, Block_ext, T, genBlock, tree0, hashComparea, hashCompare,
               valid_blocks, valid_chain, best_c, allBlocksAppend, allBlocksa,
@@ -204,7 +211,7 @@ arbitrary = (sized arbTree);
 
 arbTree :: Int -> Gen (T);
 arbTree 0 = do{bl <- arbitrary; return (Node bl Leaf Leaf);};
-arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2); 
+arbTree n = do{bl <- arbitrary; let bush = arbTree (div n 2);
 in frequency[(1, return (Node bl Leaf Leaf)),(3, liftM3 Node arbitrary bush bush)]; };
 }
 

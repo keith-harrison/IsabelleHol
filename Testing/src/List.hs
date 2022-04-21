@@ -1,4 +1,9 @@
 {-# LANGUAGE EmptyDataDecls, RankNTypes, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Unused LANGUAGE pragma" #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Use foldr" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module List(find, member, hd) where {
 

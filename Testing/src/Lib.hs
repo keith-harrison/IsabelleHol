@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Redundant ==" #-}
 module Lib
     ( someFunc
     ) where
@@ -33,13 +36,7 @@ prop_tree t b = (not (Blockchain.blocktree_eq (Blockchain.extendTree t b) t)) ==
 prop_valid_chain :: Integer -> Blockchain.T -> Property
 prop_valid_chain s t = ((Blockchain.valid_t t)) ==> Blockchain.valid_chain(Blockchain.best_chain s t) == True
 
-{-
-Test 1
-Lemma one extension adds one to the set of allblocks in the tree
-    "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)"
-Lemma two best chain is a valid chain
-    assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t)
--}
+
 {- Test 1
 Lemma one extension adds one to the set of allblocks in the tree
     "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)" -}
