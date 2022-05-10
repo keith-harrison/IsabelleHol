@@ -1,12 +1,12 @@
 theory BlockchainNew
-  imports Main "HOL-Library.Tree"
+  imports Main "HOL.List"
 begin
 
 (* -- TYPES / Hash / Block Datatype / BlockTree Datatype --*)
-type_synonym Transactions = int
-type_synonym Party = int
-type_synonym Slot = int
-datatype Hash = H int int
+type_synonym Transactions = nat
+type_synonym Party = nat
+type_synonym Slot = nat
+datatype Hash = H nat nat
 definition "Slotzero = 0"
 type_synonym Parties = "Party list"
  
@@ -101,12 +101,12 @@ fun valid_t where
 "valid_t t = (\<forall>c\<in>set(allBlocks' t).valid_chain c)"
 (*-- Functions for finding best_chain --*)
 
-fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> int \<times> bool) option"where 
+fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list 
   in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
 
-fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Block list" where
+fun get_first :: "(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list" where
 "get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
 
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
@@ -114,6 +114,23 @@ fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
 "best_chain s (Node2 x l r) = (if s > 0 then get_first ( best_c s (allBlocks' (Node2 x l r)))else [GenBlock])"|
 "best_chain s (Leaf m) = (if s > 0 then get_first ( best_c s (allBlocks' (Leaf m)))else [GenBlock])"
 
+(*-- Second Attempt at finding the best chain without using find--*)
+
+fun allChains' :: "T\<Rightarrow>Slot \<Rightarrow>BlockPool list" where
+"allChains' (Node2 m l r) s = (if sl m \<le> s then (allBlocksAppend m (allChains' l s) @allBlocksAppend m (allChains' r s))else[[]])"|
+"allChains' (Node m l) s = (if sl m \<le> s then (allBlocksAppend m (allChains' l s) @[[m]])else [[]])"|
+"allChains' (Leaf m) s = (if sl m \<le> s then [[m]] else [[]])"
+
+fun return_first :: "Chain list \<Rightarrow> Chain" where
+"return_first (x#xs) = x"|
+"return_first [] = undefined"
+
+fun best_chain_new :: "T \<Rightarrow> Slot \<Rightarrow> Chain"  where
+"best_chain_new t s = return_first (allChains' t s)"
+
+
+
+(*-- Functions for equality --*)
 fun block_eq :: "Block \<Rightarrow> Block \<Rightarrow> bool" where
 "block_eq bl1 b2 = ((sl bl1 = sl b2)\<and>(txs bl1 = txs b2)\<and>(pred bl1 = pred b2)\<and>(bid bl1 = bid b2))"
 
@@ -238,6 +255,18 @@ next
   case (Node2 x1a t1 t2)
   then show ?case
     by fastforce
+qed
+
+lemma best_valid_new:assumes "s\<ge>0\<and>block_get t = GenBlock\<and>valid_t_weak t " shows" valid_chain (best_chain_new t s)"
+proof(cases "t")
+  case (Leaf x1)
+  then show ?thesis using assms apply(simp add: GenBlock_def) done
+next
+  case (Node x21 x22)
+  then show ?thesis using assms apply(simp add: GenBlock_def) apply(auto) apply(simp add: append_def) oops
+next
+  case (Node2 x31 x32 x33)
+  then show ?thesis oops
 qed
 
 lemma hashAll : assumes "valid_t_weak t" shows "hash_t t"

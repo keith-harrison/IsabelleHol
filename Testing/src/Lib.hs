@@ -40,14 +40,14 @@ prop_valid_chain s t = ((Blockchain.valid_t t)) ==> Blockchain.valid_chain(Block
 {- Test 1
 Lemma one extension adds one to the set of allblocks in the tree
     "(extendTree t b ≠ t) ⟹ set (allBlocks (extendTree t b)) =set ([b]@ allBlocks t)" -}
-someFunc :: IO ()
-someFunc = quickCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 10000}) prop_tree
+--someFunc :: IO ()
+--someFunc = quickCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 10000}) prop_tree
 
 
 {- Test 2
 Lemma two best chain is a valid chain
     assumes"s≥0∧valid_t t" shows "valid_chain_(best_chain s t) -}
---someFunc :: IO ()
---someFunc = verboseCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 100 }) prop_valid_chain
+someFunc :: IO ()
+someFunc = quickCheckWith (Test.QuickCheck.stdArgs {maxSuccess = 100 }) prop_valid_chain
 
 

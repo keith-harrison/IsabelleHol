@@ -3,10 +3,12 @@ theory Blockchain
 begin
 
 (* -- TYPES / Hash / Block Datatype / BlockTree Datatype --*)
-type_synonym Transactions = int
-type_synonym Party = int
-type_synonym Slot = int
-datatype Hash = H int int
+type_synonym Transactions = nat
+type_synonym Party = nat
+type_synonym Slot = nat
+
+datatype Hash = H nat nat
+
 definition "Slotzero = 0"
 type_synonym Parties = "Party list"
  
@@ -114,12 +116,12 @@ fun extendTree :: "T \<Rightarrow> Block \<Rightarrow> T" where
 
 (*-- Functions for finding best_chain --*)
 
-fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> int \<times> bool) option"where 
+fun best_c :: "Slot \<Rightarrow> BlockPool list \<Rightarrow> (Block list \<times> nat \<times> bool) option"where 
 "best_c slot list = (let list' = map (\<lambda> l. (l,sl (hd l), valid_chain l)) list 
   in find (\<lambda> (c,s,v).v\<and>(s\<le>slot)) list')"
 
 
-fun get_first :: "(Block list \<times> int \<times> bool) option \<Rightarrow>Block list" where
+fun get_first :: "(Block list \<times> nat \<times> bool) option \<Rightarrow>Block list" where
 "get_first a = (case a of None \<Rightarrow> [] | Some a \<Rightarrow> fst a)"
 
 fun best_chain :: "Slot \<Rightarrow> T \<Rightarrow> Chain" where
@@ -202,13 +204,14 @@ value "valid_chain(best_chain 4 (extendTree test_tree extend_block))"
 
 value "valid_chain [\<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr>, \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>, \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr>]"
 
-value "best_c (3::int) (allBlocks'((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
+value "best_c (3::nat) (allBlocks'((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf))) )"
 
 
 value "best_chain 10  ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
  (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf)))"
-value "best_c (3::int) (allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
+
+value "best_c (3::nat) (allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr>  Leaf Leaf)
  (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 2\<rparr> Leaf Leaf))))"
 
 value "allBlocks' ((Node GenBlock (Node \<lparr>sl = 1, txs = 1, pred = H 0 0, bid = 1\<rparr> (Node \<lparr>sl = 2, txs = 2, pred = H 1 1, bid = 2\<rparr> Leaf Leaf) Leaf)
@@ -224,7 +227,9 @@ value "allBlocks'  (Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 1\<rparr> 
 value "valid_chain (best_chain 4 (T.Node \<lparr>sl = 0, txs = 0, pred = H 0 0, bid = 0\<rparr> T.Leaf T.Leaf))"
 
 definition "testblock = \<lparr>sl = 1, txs = 1, pred = H 2 1, bid = 1 \<rparr>"
+
 definition "testblock2 = \<lparr>sl = 2, txs = 1, pred = H 1 1, bid = 1 \<rparr>"
+
 value "extendTree (Node testblock Leaf Leaf) testblock2"
 value"allBlocks (extendTree (Node testblock Leaf Leaf) testblock2)"
 value"allBlocks (Node testblock Leaf Leaf)@[testblock2]"
@@ -393,7 +398,7 @@ lemma predThan2 : assumes "r \<noteq> Leaf \<and> l\<noteq>Leaf\<and>hash_t(Node
   apply (metis HashCompare.elims(2) block_get.elims hash_t.simps(5)) 
   by (metis HashCompare.elims(2) block_get.elims hash_t.simps(5))
 
-
+(* DRAFTS FOR UNFINISHED PROOFS *)
 lemma hashAll : assumes "valid_t_weak(Node m l r)" shows "(hash_t (Node m l r))"
  proof(cases "l")
    case Leaf note lleaf=this
